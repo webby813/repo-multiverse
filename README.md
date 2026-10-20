@@ -8,7 +8,7 @@ In Marvel's *Loki* series, the Time Variance Authority (TVA) guards a single Sac
 
 Running several AI sessions on the same repo is much the same. Each session is a variant, growing a new timeline on its own branch. Without someone keeping watch, unreviewed changes can flow straight into the main line, overwrite each other, or get pushed without anyone verifying them.
 
-repo-multiverse borrows that world to give Claude Code a gatekeeping workflow for multiple sessions. Each session works in its own worktree and branch. Only one session at a time sits on the sacred timeline, and only it can combine work into the integration branch. Every combine is verified first and always needs your approval. That is why its commands start with `loki-`.
+repo-multiverse borrows that world to let Claude Code manage several sessions on one repo. Each session works in its own worktree and branch. A main timeline session looks after the sessions that joined it: it reviews what they hand in, and it is the one that combines their work into the integration branch, verified once and only when you ask. Several main timelines can run side by side. That is why its commands start with `loki-`.
 
 ## The show, mapped
 
@@ -17,47 +17,52 @@ repo-multiverse borrows that world to give Claude Code a gatekeeping workflow fo
 | Sacred Timeline | The integration branch, where all work ends up |
 | Variant | A Claude Code session working in parallel |
 | A branched timeline | A session's work branch, each in its own worktree |
-| TVA agent | Gatekeeper: owns a story and reviews the scope of the branches under it |
-| The throne at the end of time | Sacred timeline holder: the only session that can combine (`/loki-sacred`) |
-| Nexus event | The checks before a combine: files outside the owned paths, overlaps with other branches, files someone left uncommitted |
-| Pruning | Cleaning up merged worktrees and stale registrations (`/loki-prune`) |
+| TVA agent | Main timeline: a session that looks after the sessions under it, reviews their work and combines it (`/loki-sacred`) |
+| The one at the end of time | You: you decide what gets combined and when it is pushed |
+| Nexus event | A branch that strays from its task: its main timeline sends it back |
+| Pruning | Removing a merged worktree once its owner is done; the branch stays |
 
 ## Core concepts
 
 ### Roles
 
 ```
-You (pick the holder, approve every combine and push)
-└─ sacred timeline: the integration branch ← holder session (the only one that combines)
-   ├─ gatekeeper A (story A)
-   │   ├─ work branch (done by the gatekeeper)
-   │   └─ work branch (done by a worker session)
-   └─ gatekeeper B (story B)
-       └─ work branch
+You (say what gets combined and when to push)
+└─ integration branch
+   ├─ main timeline loki-agent-1
+   │   ├─ its own work branch
+   │   └─ worker loki-agent-2
+   │       └─ work branch
+   └─ main timeline loki-agent-3
+       └─ worker loki-agent-4
+           └─ work branch
 ```
 
 | Role | Does |
 |---|---|
-| You (the user) | Decide which session holds the sacred timeline; approve every combine and push |
-| Sacred timeline holder | One at a time; the only session that runs `/story-combine` and moves the integration branch. It can also be a gatekeeper |
-| Gatekeeper | Owns a story (one feature area) and its work branches, checks that changes stay in scope, then hands them to the holder |
-| Worker | Works on one branch under a gatekeeper and reports ready when done |
+| You (the user) | Start sessions; say what gets combined and when to push |
+| Main timeline | Looks after the sessions that joined it: reviews every hand-in, sends back work that strays, combines with `/story-combine`, tells the other sessions. Several can exist; they announce their combines to each other |
+| Worker | Does one task on its own branch under a main timeline, hands it in when ready, never merges itself |
+
+### Names
+
+Sessions are addressed by name, and the standard name is `loki-agent-N`. Start Claude Code with the bundled `loki` launcher to get the next free one, or `/rename` a running session. A session keeps its place after a rename or a resume, because registrations are keyed by session id.
 
 ### How a combine goes
 
-1. A worker or gatekeeper opens a work branch in its own worktree, starting from the latest commit of the integration branch.
-2. When done, it marks the branch ready. The gatekeeper checks the scope and passes it on to the holder.
-3. The holder confirms with you which branches to combine this time.
-4. Each branch is merged in a scratch worktree and goes through full verification. Only after it passes does the integration branch fast-forward.
-5. The holder reports the result and notifies the other sessions. Whether to push is up to you.
+1. A worker opens a work branch in its own worktree, starting from the latest commit of the integration branch.
+2. When done, it rebases onto the integration branch, runs the verification once and hands the branch in to its main timeline.
+3. The main timeline reviews the diff. Work that strays from the task goes back to its owner.
+4. When you ask, the main timeline tells the other main timelines, merges each branch in a scratch worktree, verifies it once (reusing the worker's result when the tree is identical), and only then fast-forwards the integration branch.
+5. It reports the result in a fixed shape and tells the other sessions. Whether to push is up to you.
 
 ### What it guarantees
 
-- **Only one session can combine**: the holder is recorded in a state file, and the script refuses any other session that tries to combine. It doesn't rely on the AI behaving.
-- **One combine at a time**: a lock is held during a combine, so two never run at once.
-- **Verify before moving**: merging and verification happen in a scratch worktree, and the main folder only fast-forwards, so other people's uncommitted files are never touched.
-- **Changes stay in scope**: a gatekeeper registers which paths its story may change. Before a combine, files outside them are listed and you are asked first.
-- **Only your word counts**: messages from other sessions and subagent reports never count as approval. Without your consent, nothing is combined or pushed.
+- **Every hand-in is reviewed**: workers never merge. A main timeline reads the diff first and sends back edits outside the task.
+- **You decide**: nothing is combined unless you asked for it, and nothing is pushed without you. Messages from other sessions and subagent reports never count as approval.
+- **Verify before moving, once**: merging and verification happen in a scratch worktree, and the main folder only fast-forwards, so other people's uncommitted files are never touched. A passing result is reused when nothing changed.
+- **History stays readable**: branches keep their own commits, never squashed, and pushed commits are never rewritten.
+- **No screenshots for self-checks**: checks are builds and your verify commands. Screenshots or recordings happen only when you ask.
 - **Nothing written into your project**: config and state live in `~/.claude/multiverse/<repo-key>/`. Nothing is left in the repo, its `.git` or its `.claude`.
 
 ## When to use it
@@ -66,7 +71,7 @@ Good fit:
 
 - Two or more Claude Code sessions working on different features in the same repo at once
 - You want AI sessions to split the work in parallel, but you decide what reaches the main line
-- You need a local integration branch that stays clean and only takes verified, approved changes
+- You need a local integration branch that stays clean and only takes reviewed, verified changes
 
 Not needed:
 
@@ -92,7 +97,7 @@ These skills only activate when you ask for them or when sessions need to coordi
 npx skills add webby813/repo-multiverse -g -a claude-code --skill '*'
 ```
 
-This uses the open-source [skills](https://github.com/vercel-labs/skills) CLI to install all 7 skills into `~/.claude/skills/`. New Claude Code sessions can then use `/loki-session` and the rest.
+This uses the open-source [skills](https://github.com/vercel-labs/skills) CLI to install all 6 skills into `~/.claude/skills/`. New Claude Code sessions can then use `/loki-session` and the rest.
 
 - `-g`: installs at user level, so nothing is written into the project you are in
 - `--skill '*'`: required. The skills share the script in `repo-multiverse`, so they must be installed together
@@ -116,6 +121,15 @@ done
 
 Symlinks take effect right after a `git pull`, which suits anyone who wants to modify the skills. Here too, link all the folders together.
 
+### Standard session names (optional)
+
+```bash
+ln -s ~/.claude/skills/repo-multiverse/scripts/loki ~/.local/bin/loki   # any folder on your PATH
+loki                                                                    # = claude -n loki-agent-N
+```
+
+Other arguments pass straight through to `claude`.
+
 ### Enable it for a repo
 
 After installing, open a Claude Code session in the repo you want to use it in and run:
@@ -129,29 +143,26 @@ Claude writes this repo's config with you (integration branch, verification comm
 ## Quick start
 
 ```
-/repo-multiverse init                   # once: create this repo's config
-/loki-sacred                            # in the session that combines: take the sacred timeline
-/loki-join gatekeeper <story>           # in a session that owns a feature: register as gatekeeper
-/loki-join worker <gatekeeper> <story>  # or register as a worker under a gatekeeper
-/loki-join branch <branch> ready        # branch finished: mark it ready
-/loki-timeline                          # see every session and branch at a glance
-/story-combine 1 2                      # in the holder session: combine branches 1 and 2 from the timeline, in order
-/loki-prune                             # wrap up: clean up merged worktrees and stale registrations
+/repo-multiverse init              # once: create this repo's config
+/loki-sacred                       # in the session that looks after the others: become a main timeline
+/loki-join                         # in each other session: join it (asks only when several main timelines are live)
+/loki-join branch <branch> ready   # branch finished: hand it in
+/loki-timeline                     # see every session and branch at a glance
+/story-combine 1 2                 # in the main timeline: combine branches 1 and 2 from the timeline, in order
 ```
 
-You can also just tell Claude in plain language, for example "combine branches 1 and 2".
+`/loki-join` with no main timeline live makes the session one. You can also just tell Claude in plain language, for example "combine branches 1 and 2".
 
 ## Commands
 
 | Command | What it does | Changes anything? |
 |---|---|---|
 | `/repo-multiverse [init]` | Overview and shared rules; `init` creates this repo's config | `init` writes the config |
-| `/loki-session [--all]` | Lists live sessions: name, status, idle time, role, branches | No |
-| `/loki-join …` | Registers as gatekeeper or worker, registers work branches, marks them ready, leaves | Only its own registration |
-| `/loki-sacred [status \| takeover \| release]` | Seats the current session on the sacred timeline; `takeover` takes it from a live holder (needs your approval), `release` steps down | Writes the holder record |
-| `/loki-timeline` | Tree: integration branch → gatekeepers → work branches, with numbers, ahead/behind counts and merged state | No |
-| `/story-combine <numbers or branches…>` | The holder combines approved branches into the integration branch, in order | Yes, with your approval |
-| `/loki-prune [--scratch]` | Lists worktrees, stale registrations and scratch folders that can be cleaned up; deletes only what you approve | Yes, group by group |
+| `/loki-session [--all \| forget]` | Lists live sessions: name, status, idle time, role, main timeline, branches; `forget` clears registrations of ended sessions | Only `forget` |
+| `/loki-sacred [off]` | Makes this session a main timeline right away; `off` steps down | Only its own registration |
+| `/loki-join [name] …` | Joins a main timeline (the only live one, or the one you name; becomes one when none is live), registers work branches, hands them in, leaves | Only its own registration |
+| `/loki-timeline` | Tree: integration branch → main timelines → workers → branches, with numbers, ahead/behind counts and merged state | No |
+| `/story-combine <numbers or branches…>` | A main timeline combines reviewed branches into the integration branch, in order | Yes, when you ask |
 
 ## Configuration
 
@@ -163,20 +174,20 @@ You can also just tell Claude in plain language, for example "combine branches 1
 | `verify_quick` | Quick verification command used while working |
 | `verify_full` | Full verification, run once per combine in the scratch worktree |
 | `worktree_setup` | Commands to run after a new worktree is created, such as preparing dependencies |
-| `extra_locks` | Lock files that must be free before a combine |
-| `protected_devices` | Simulators or devices reserved for you, which sessions must not use |
 | `shared_files` | Files every story may touch, with the rule for resolving conflicts in them |
-| `notes` | Project-specific notes for gatekeepers |
+| `notes` | Repo-specific rules every session follows, such as a device that belongs to you |
 
 State lives in `~/.claude/multiverse/<repo-key>/`. Run `python3 ~/.claude/skills/repo-multiverse/scripts/multiverse.py where` inside the repo to print the exact location. To move it, set the `MULTIVERSE_HOME` environment variable.
+
+State from 0.2 (gatekeepers and `sacred.json`) is read as main timelines, and each session moves to the new format the next time it writes its registration.
 
 ## Uninstall
 
 ```bash
-npx skills remove -g loki-session loki-join loki-sacred loki-timeline story-combine loki-prune repo-multiverse
+npx skills remove -g loki-session loki-join loki-sacred loki-timeline story-combine repo-multiverse
 ```
 
-If you installed manually, delete those 7 links from `~/.claude/skills/`. Each repo's config and state are in `~/.claude/multiverse/`; delete them yourself once you no longer need them.
+If you installed manually, delete those 6 links from `~/.claude/skills/`, plus the `loki` link if you made one. Each repo's config and state are in `~/.claude/multiverse/`; delete them yourself once you no longer need them.
 
 ## License
 
