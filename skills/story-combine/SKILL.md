@@ -21,7 +21,7 @@ A main timeline merges the branches it reviewed into the integration branch, one
 
 ## Combine: one branch at a time, in the planned order
 
-1. `git worktree add --detach <scratchpad>/combine <integration>`, then run the config's `worktree_setup` there.
+1. `git worktree add --detach <scratchpad>/combine <integration>`, then run the config's `worktree_setup` there, and `session_setup` if this session hasn't run it yet.
 2. `git merge --no-ff <branch>`. The branch keeps its own commits; never squash. Resolve conflicts only as `shared_files` prescribes. Any other conflict: `git merge --abort`, report it, stop.
 3. Verify once:
    - If the merge result's tree is identical to a commit that already passed `verify_full` (`git diff --quiet <verified-sha> <merge-sha>`; usual when the owner rebased onto the integration tip and verified there), don't run it again. Reuse that result and name who ran it on which commit.

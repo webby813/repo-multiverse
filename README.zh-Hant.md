@@ -37,7 +37,7 @@ repo-multiverse 借用這套世界觀，讓 Claude Code 能管理同一個 repo 
 | TVA 探員 | 主時間線：照看底下的 session、審查它們的成果並負責合併（`/loki-sacred`） |
 | 時間盡頭的那個人 | 你：決定什麼要合、什麼時候 push |
 | Nexus 事件 | 偏離任務的分支：由它的主時間線退回 |
-| 修剪（Pruning） | `/loki-leave`：做完的 session 移除自己的登記和已合併的 worktree；分支保留 |
+| 修剪（Pruning） | `/loki-leave`：做完的 session 移除自己的登記、已合併的 worktree，以及替自己建的測試環境；分支保留 |
 
 ## 核心概念
 
@@ -72,7 +72,7 @@ session 以名字互相稱呼，標準名字是 `loki-agent-N`。用附帶的 `l
 3. 主時間線審查 diff，偏離任務的改動退回給擁有者。
 4. 你說要合的時候，主時間線先告知其他主時間線，再把每條分支在暫存 worktree 裡合併、驗證一次（tree 完全相同時直接沿用 worker 的結果），通過之後整合分支才 fast-forward 過去。節奏由你決定：每交一份就合（邊做邊合），或累積幾條一次合。
 5. 用固定格式回報結果並通知其他 session。要不要 push，由你決定。
-6. worker 執行 `/loki-leave`：移除它的登記和已合併的 worktree，工作完成。
+6. worker 執行 `/loki-leave`：移除它的登記、已合併的 worktree 和自己的測試環境，工作完成。
 
 ### 它保證什麼
 
@@ -180,7 +180,7 @@ Claude 會和你一起寫好這個 repo 的設定（整合分支、驗證指令�
 | `/loki-session [--all \| forget]` | 列出活躍中的 session：名字、狀態、閒置時間、角色、所屬主時間線、分支；`forget` 清掉已結束 session 的登記 | 只有 `forget` |
 | `/loki-sacred [off]` | 讓目前的 session 立刻成為主時間線；`off` 退下 | 只寫自己的登記 |
 | `/loki-join [名字] …` | 加入主時間線（唯一在線的那條，或你指定的那條；一條都沒有就自己成為主時間線）、登記工作分支、交件 | 只寫自己的登記 |
-| `/loki-leave` | 離開流程：移除這個 session 的登記和已合併分支的 worktree；分支保留 | 自己的登記和已合併的 worktree |
+| `/loki-leave` | 離開流程，不在你的機器上留下遺棄的測試環境：移除這個 session 的登記、已合併分支的 worktree，以及只為測試替自己建的環境（例如自己的模擬器），除非你說要留；分支保留 | 自己的登記、已合併的 worktree 和自己的測試環境 |
 | `/loki-timeline` | 樹狀圖：整合分支 → 主時間線 → worker → 分支，含編號、領先／落後、是否已合併 | 否 |
 | `/story-combine <編號或分支…>` | 主時間線依序把審查過的分支合進整合分支 | 是，你要求時才做 |
 
@@ -194,6 +194,7 @@ Claude 會和你一起寫好這個 repo 的設定（整合分支、驗證指令�
 | `verify_quick` | 開發中跑的快速驗證指令 |
 | `verify_full` | 每次合併時在暫存 worktree 跑一次的完整驗證 |
 | `worktree_setup` | 新 worktree 建好後要跑的指令，例如準備相依套件 |
+| `session_setup` | 每個 session 第一次用到前替自己跑一次的指令，例如建一台自己的測試裝置；`{sid}` 是 session 的短 id。`/loki-leave` 會移除它建的東西 |
 | `shared_files` | 每個 story 都可能改到的共用檔案，以及衝突時的處理規則 |
 | `notes` | 每個 session 都要遵守的專案規則，例如哪台裝置是你自己的 |
 

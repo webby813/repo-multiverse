@@ -7,6 +7,9 @@
   "worktree_setup": [
     "[ -d node_modules ] || cp -Rc {main}/node_modules node_modules"
   ],
+  "session_setup": [
+    "docker run -d --name test-db-{sid} postgres:16"
+  ],
   "shared_files": {
     "*/Localizable.strings": "append new keys at the end; on conflict keep both sides",
     "*.xcodeproj/project.pbxproj": "keep both sides"

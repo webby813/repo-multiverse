@@ -37,7 +37,7 @@ Earlier versions grew a combine lock, pre-combine scope checks, conflict scans, 
 | TVA agent | Main timeline: a session that looks after the sessions under it, reviews their work and combines it (`/loki-sacred`) |
 | The one at the end of time | You: you decide what gets combined and when it is pushed |
 | Nexus event | A branch that strays from its task: its main timeline sends it back |
-| Pruning | `/loki-leave`: a finished session drops its registration and its merged worktrees; the branch stays |
+| Pruning | `/loki-leave`: a finished session drops its registration, its merged worktrees and any test environment it made for itself; the branch stays |
 
 ## Core concepts
 
@@ -72,7 +72,7 @@ Sessions are addressed by name, and the standard name is `loki-agent-N`. Start C
 3. The main timeline reviews the diff. Work that strays from the task goes back to its owner.
 4. When you ask, the main timeline tells the other main timelines, merges each branch in a scratch worktree, verifies it once (reusing the worker's result when the tree is identical), and only then fast-forwards the integration branch. The rhythm is yours: combine each hand-in as it arrives, or several at once.
 5. It reports the result in a fixed shape and tells the other sessions. Whether to push is up to you.
-6. The worker runs `/loki-leave`: its registration and its merged worktree go, and its part is done.
+6. The worker runs `/loki-leave`: its registration, its merged worktree and its own test environment go, and its part is done.
 
 ### What it guarantees
 
@@ -180,7 +180,7 @@ Claude writes this repo's config with you (integration branch, verification comm
 | `/loki-session [--all \| forget]` | Lists live sessions: name, status, idle time, role, main timeline, branches; `forget` clears registrations of ended sessions | Only `forget` |
 | `/loki-sacred [off]` | Makes this session a main timeline right away; `off` steps down | Only its own registration |
 | `/loki-join [name] …` | Joins a main timeline (the only live one, or the one you name; becomes one when none is live), registers work branches, hands them in | Only its own registration |
-| `/loki-leave` | Leaves the workflow: removes this session's registration and the worktrees of its merged branches; branches stay | Its registration and merged worktrees |
+| `/loki-leave` | Leaves the workflow without leaving abandoned test environments behind: removes this session's registration, the worktrees of its merged branches, and test setups it made only for itself (such as its own simulator) unless you asked to keep them; branches stay | Its registration, merged worktrees and own test environments |
 | `/loki-timeline` | Tree: integration branch → main timelines → workers → branches, with numbers, ahead/behind counts and merged state | No |
 | `/story-combine <numbers or branches…>` | A main timeline combines reviewed branches into the integration branch, in order | Yes, when you ask |
 
@@ -194,6 +194,7 @@ Claude writes this repo's config with you (integration branch, verification comm
 | `verify_quick` | Quick verification command used while working |
 | `verify_full` | Full verification, run once per combine in the scratch worktree |
 | `worktree_setup` | Commands to run after a new worktree is created, such as preparing dependencies |
+| `session_setup` | Commands each session runs once for itself before it needs them, such as creating its own test device; `{sid}` is the session's short id. `/loki-leave` removes what they made |
 | `shared_files` | Files every story may touch, with the rule for resolving conflicts in them |
 | `notes` | Repo-specific rules every session follows, such as a device that belongs to you |
 

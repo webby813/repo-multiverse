@@ -25,7 +25,7 @@ argument-hint: "[<main timeline name>] | branch <name> [ready]"
 
 ## Working as a worker
 
-- A new branch starts from the integration branch tip in its own worktree, never in the main folder: `git worktree add -b <branch> <path> <integration>`, then the config's `worktree_setup` there.
+- A new branch starts from the integration branch tip in its own worktree, never in the main folder: `git worktree add -b <branch> <path> <integration>`, then the config's `worktree_setup` there. Before the first build or verify, run the config's `session_setup` once and use only what it made for you.
 - Keep the branch to the task. Unrelated edits (IDE or scheme files, debug switches, changed defaults, stray files) get the branch sent back.
 - Commit in small focused commits.
 - Before handing in: rebase onto the integration branch tip (only if the branch was never pushed), run the verify once on the final commit, and put the result and its sha in the ready message so the combine can reuse it.

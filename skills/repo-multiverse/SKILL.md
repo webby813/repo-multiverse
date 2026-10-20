@@ -39,6 +39,7 @@ Helper `S` = `python3 ${CLAUDE_SKILL_DIR}/scripts/multiverse.py` (`--help` lists
 5. Never push unless the user says so. Never amend, rebase or force-push commits that are already pushed.
 6. Verify once per change. When a merge result's tree is identical to a commit that already passed, reuse that result instead of running it again.
 7. Message peers only with the templates below, one message per event. Talk to the user in the user's language.
+8. Run the config's `session_setup` once, before the first command that needs what it makes, and use only what it made for this session. /loki-leave removes it.
 
 ## Message templates
 
@@ -65,5 +66,6 @@ Write the `config.json` that `S where` names, together with the user. Start from
 | `verify_quick` | command used while working |
 | `verify_full` | list of commands run once per combine, in the temporary worktree |
 | `worktree_setup` | commands run in a new worktree; `{main}` = main folder |
+| `session_setup` | commands a session runs once for itself, such as creating its own test device; `{sid}` = the session id `S whoami` prints |
 | `shared_files` | `{glob: conflict rule}` for files every story may append to |
 | `notes` | short repo-specific rules every session follows |
