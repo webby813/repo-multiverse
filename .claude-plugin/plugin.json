@@ -1,7 +1,7 @@
 {
   "name": "repo-multiverse",
-  "description": "Gatekeeper workflow for several Claude sessions on one repo: live sessions, gatekeeper/branch timeline, one sacred-timeline session that alone runs verified one-at-a-time combines into the integration branch.",
-  "version": "0.2.0",
+  "description": "Manage several Claude Code sessions on one repo: live sessions, main timelines with the workers under them, reviewed and verified combines into the integration branch.",
+  "version": "0.3.0",
   "author": {
     "name": "webby"
   },
