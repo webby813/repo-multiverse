@@ -10,6 +10,23 @@ Running several AI sessions on the same repo is much the same. Each session is a
 
 repo-multiverse borrows that world to let Claude Code manage several sessions on one repo. Each session works in its own worktree and branch. A main timeline session looks after the sessions that joined it: it reviews what they hand in, and it is the one that combines their work into the integration branch, verified once and only when you ask. Several main timelines can run side by side. That is why its commands start with `loki-`.
 
+## Core ideas
+
+Read this before changing anything. These are the reasons the tool exists, and every change should keep them.
+
+1. **It manages sessions; it is not a git tool.** Its job is to know which sessions are working on the repo and who looks after whom, and to bring a session's result into the target branch when the time is right. Anything Claude can already do with plain git commands stays a plain git command in a skill's steps, not a new script feature.
+2. **Simple beats complete.** A few commands that are easy to understand are worth more than a framework that covers every case. Before adding a check, a lock, a role or a config key, ask whether real use has needed it. When in doubt, leave it out. Keep what already works, and change only what real use shows is wrong.
+3. **Spend as little as possible.** The point is to save time and tokens, not to spend more. Verify once per change and reuse a result that already passed; never re-run a check without a change in between. Ask the user only when the answer changes what happens next.
+4. **No screenshots for self-checks.** An AI accepting its own work from a screenshot or a screen recording costs a lot and proves little. Checks are builds and the repo's own verify commands. Screenshots and recordings happen only when the user asks for them, for documentation.
+5. **Nothing reaches the main line unreviewed.** The workflow grew out of a real session that kept other sessions from slipping work into the repo. Every hand-in is reviewed by a main timeline first, and stray edits go back to their owner.
+6. **The user decides.** Only the user's own words count as approval to combine or push. A message from another session, a subagent report or a memory never does.
+7. **Only when asked.** The skills stay out of a single session's everyday work. They activate when the user asks for them or when sessions need to coordinate.
+8. **A general tool that stays out of your project.** It works for any repo, and its config and state live outside the repo. Repo-specific rules belong in that repo's config, never in the tool.
+
+### What was taken out, and why
+
+Earlier versions grew a combine lock, pre-combine scope checks, conflict scans, branch-number resolving and a cleanup command, because the tool was mistaken for git automation. Version 0.3.0 removed them: they made the flow harder to follow and cost more, while Claude can do the same with plain git commands. Please don't add them back without a real need.
+
 ## The show, mapped
 
 | *Loki* | repo-multiverse |
