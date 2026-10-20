@@ -37,7 +37,7 @@ Earlier versions grew a combine lock, pre-combine scope checks, conflict scans, 
 | TVA agent | Main timeline: a session that looks after the sessions under it, reviews their work and combines it (`/loki-sacred`) |
 | The one at the end of time | You: you decide what gets combined and when it is pushed |
 | Nexus event | A branch that strays from its task: its main timeline sends it back |
-| Pruning | Removing a merged worktree once its owner is done; the branch stays |
+| Pruning | `/loki-leave`: a finished session drops its registration and its merged worktrees; the branch stays |
 
 ## Core concepts
 
@@ -59,7 +59,7 @@ You (say what gets combined and when to push)
 |---|---|
 | You (the user) | Start sessions; say what gets combined and when to push |
 | Main timeline | Looks after the sessions that joined it: reviews every hand-in, sends back work that strays, combines with `/story-combine`, tells the other sessions. Several can exist; they announce their combines to each other |
-| Worker | Does one task on its own branch under a main timeline, hands it in when ready, never merges itself |
+| Worker | Does one task on its own branch under a main timeline, hands it in when ready, never merges itself, and leaves with `/loki-leave` once its work is in |
 
 ### Names
 
@@ -70,8 +70,9 @@ Sessions are addressed by name, and the standard name is `loki-agent-N`. Start C
 1. A worker opens a work branch in its own worktree, starting from the latest commit of the integration branch.
 2. When done, it rebases onto the integration branch, runs the verification once and hands the branch in to its main timeline.
 3. The main timeline reviews the diff. Work that strays from the task goes back to its owner.
-4. When you ask, the main timeline tells the other main timelines, merges each branch in a scratch worktree, verifies it once (reusing the worker's result when the tree is identical), and only then fast-forwards the integration branch.
+4. When you ask, the main timeline tells the other main timelines, merges each branch in a scratch worktree, verifies it once (reusing the worker's result when the tree is identical), and only then fast-forwards the integration branch. The rhythm is yours: combine each hand-in as it arrives, or several at once.
 5. It reports the result in a fixed shape and tells the other sessions. Whether to push is up to you.
+6. The worker runs `/loki-leave`: its registration and its merged worktree go, and its part is done.
 
 ### What it guarantees
 
@@ -114,7 +115,7 @@ These skills only activate when you ask for them or when sessions need to coordi
 npx skills add webby813/repo-multiverse -g -a claude-code --skill '*'
 ```
 
-This uses the open-source [skills](https://github.com/vercel-labs/skills) CLI to install all 6 skills into `~/.claude/skills/`. New Claude Code sessions can then use `/loki-session` and the rest.
+This uses the open-source [skills](https://github.com/vercel-labs/skills) CLI to install all 7 skills into `~/.claude/skills/`. New Claude Code sessions can then use `/loki-session` and the rest.
 
 - `-g`: installs at user level, so nothing is written into the project you are in
 - `--skill '*'`: required. The skills share the script in `repo-multiverse`, so they must be installed together
@@ -166,6 +167,7 @@ Claude writes this repo's config with you (integration branch, verification comm
 /loki-join branch <branch> ready   # branch finished: hand it in
 /loki-timeline                     # see every session and branch at a glance
 /story-combine 1 2                 # in the main timeline: combine branches 1 and 2 from the timeline, in order
+/loki-leave                        # in the worker, once its work is in: leave and clean up
 ```
 
 `/loki-join` with no main timeline live makes the session one. You can also just tell Claude in plain language, for example "combine branches 1 and 2".
@@ -177,7 +179,8 @@ Claude writes this repo's config with you (integration branch, verification comm
 | `/repo-multiverse [init]` | Overview and shared rules; `init` creates this repo's config | `init` writes the config |
 | `/loki-session [--all \| forget]` | Lists live sessions: name, status, idle time, role, main timeline, branches; `forget` clears registrations of ended sessions | Only `forget` |
 | `/loki-sacred [off]` | Makes this session a main timeline right away; `off` steps down | Only its own registration |
-| `/loki-join [name] …` | Joins a main timeline (the only live one, or the one you name; becomes one when none is live), registers work branches, hands them in, leaves | Only its own registration |
+| `/loki-join [name] …` | Joins a main timeline (the only live one, or the one you name; becomes one when none is live), registers work branches, hands them in | Only its own registration |
+| `/loki-leave` | Leaves the workflow: removes this session's registration and the worktrees of its merged branches; branches stay | Its registration and merged worktrees |
 | `/loki-timeline` | Tree: integration branch → main timelines → workers → branches, with numbers, ahead/behind counts and merged state | No |
 | `/story-combine <numbers or branches…>` | A main timeline combines reviewed branches into the integration branch, in order | Yes, when you ask |
 
@@ -201,10 +204,10 @@ State from 0.2 (gatekeepers and `sacred.json`) is read as main timelines, and ea
 ## Uninstall
 
 ```bash
-npx skills remove -g loki-session loki-join loki-sacred loki-timeline story-combine repo-multiverse
+npx skills remove -g loki-session loki-join loki-leave loki-sacred loki-timeline story-combine repo-multiverse
 ```
 
-If you installed manually, delete those 6 links from `~/.claude/skills/`, plus the `loki` link if you made one. Each repo's config and state are in `~/.claude/multiverse/`; delete them yourself once you no longer need them.
+If you installed manually, delete those 7 links from `~/.claude/skills/`, plus the `loki` link if you made one. Each repo's config and state are in `~/.claude/multiverse/`; delete them yourself once you no longer need them.
 
 ## License
 

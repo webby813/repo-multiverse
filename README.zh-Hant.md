@@ -37,7 +37,7 @@ repo-multiverse 借用這套世界觀，讓 Claude Code 能管理同一個 repo 
 | TVA 探員 | 主時間線：照看底下的 session、審查它們的成果並負責合併（`/loki-sacred`） |
 | 時間盡頭的那個人 | 你：決定什麼要合、什麼時候 push |
 | Nexus 事件 | 偏離任務的分支：由它的主時間線退回 |
-| 修剪（Pruning） | 擁有者做完後，移除已合併的 worktree；分支保留 |
+| 修剪（Pruning） | `/loki-leave`：做完的 session 移除自己的登記和已合併的 worktree；分支保留 |
 
 ## 核心概念
 
@@ -59,7 +59,7 @@ repo-multiverse 借用這套世界觀，讓 Claude Code 能管理同一個 repo 
 |---|---|
 | 你（使用者） | 開 session；決定合什麼、什麼時候 push |
 | 主時間線 | 照看加入它的 session：審查每一份交件、退回偏離任務的改動、用 `/story-combine` 合併、通知其他 session。可以有好幾條，合併前會互相告知 |
-| worker | 在某條主時間線底下，用自己的分支做一件事，做完交件，自己從不合併 |
+| worker | 在某條主時間線底下，用自己的分支做一件事，做完交件，自己從不合併；成果合進去後用 `/loki-leave` 離開 |
 
 ### 名字
 
@@ -70,8 +70,9 @@ session 以名字互相稱呼，標準名字是 `loki-agent-N`。用附帶的 `l
 1. worker 在自己的 worktree 開工作分支，從整合分支最新的 commit 長出來。
 2. 做完後 rebase 到整合分支上、跑一次驗證，再把分支交給它的主時間線。
 3. 主時間線審查 diff，偏離任務的改動退回給擁有者。
-4. 你說要合的時候，主時間線先告知其他主時間線，再把每條分支在暫存 worktree 裡合併、驗證一次（tree 完全相同時直接沿用 worker 的結果），通過之後整合分支才 fast-forward 過去。
+4. 你說要合的時候，主時間線先告知其他主時間線，再把每條分支在暫存 worktree 裡合併、驗證一次（tree 完全相同時直接沿用 worker 的結果），通過之後整合分支才 fast-forward 過去。節奏由你決定：每交一份就合（邊做邊合），或累積幾條一次合。
 5. 用固定格式回報結果並通知其他 session。要不要 push，由你決定。
+6. worker 執行 `/loki-leave`：移除它的登記和已合併的 worktree，工作完成。
 
 ### 它保證什麼
 
@@ -114,7 +115,7 @@ session 以名字互相稱呼，標準名字是 `loki-agent-N`。用附帶的 `l
 npx skills add webby813/repo-multiverse -g -a claude-code --skill '*'
 ```
 
-透過開源的 [skills](https://github.com/vercel-labs/skills) CLI，把 6 個 skills 一起裝到 `~/.claude/skills/`。新開的 Claude Code session 就能使用 `/loki-session` 等指令。
+透過開源的 [skills](https://github.com/vercel-labs/skills) CLI，把 7 個 skills 一起裝到 `~/.claude/skills/`。新開的 Claude Code session 就能使用 `/loki-session` 等指令。
 
 - `-g`：裝在使用者層級，不會寫進目前所在的專案
 - `--skill '*'`：一定要加。各個 skill 共用 `repo-multiverse` 裡的腳本，必須全部一起裝
@@ -166,6 +167,7 @@ Claude 會和你一起寫好這個 repo 的設定（整合分支、驗證指令�
 /loki-join branch <分支> ready      # 分支做完：交件
 /loki-timeline                     # 看所有 session 和分支的全貌
 /story-combine 1 2                 # 在主時間線：依序合併 timeline 上的 1、2 號分支
+/loki-leave                        # 在 worker，成果合進去後：離開並清理
 ```
 
 沒有任何主時間線在線時，`/loki-join` 會讓這個 session 自己成為主時間線。也可以直接用自然語言告訴 Claude，例如「把 1 號和 2 號分支合進去」。
@@ -177,7 +179,8 @@ Claude 會和你一起寫好這個 repo 的設定（整合分支、驗證指令�
 | `/repo-multiverse [init]` | 總覽與共用規則；`init` 建立這個 repo 的設定 | `init` 會寫設定檔 |
 | `/loki-session [--all \| forget]` | 列出活躍中的 session：名字、狀態、閒置時間、角色、所屬主時間線、分支；`forget` 清掉已結束 session 的登記 | 只有 `forget` |
 | `/loki-sacred [off]` | 讓目前的 session 立刻成為主時間線；`off` 退下 | 只寫自己的登記 |
-| `/loki-join [名字] …` | 加入主時間線（唯一在線的那條，或你指定的那條；一條都沒有就自己成為主時間線）、登記工作分支、交件、離開 | 只寫自己的登記 |
+| `/loki-join [名字] …` | 加入主時間線（唯一在線的那條，或你指定的那條；一條都沒有就自己成為主時間線）、登記工作分支、交件 | 只寫自己的登記 |
+| `/loki-leave` | 離開流程：移除這個 session 的登記和已合併分支的 worktree；分支保留 | 自己的登記和已合併的 worktree |
 | `/loki-timeline` | 樹狀圖：整合分支 → 主時間線 → worker → 分支，含編號、領先／落後、是否已合併 | 否 |
 | `/story-combine <編號或分支…>` | 主時間線依序把審查過的分支合進整合分支 | 是，你要求時才做 |
 
@@ -201,10 +204,10 @@ Claude 會和你一起寫好這個 repo 的設定（整合分支、驗證指令�
 ## 移除
 
 ```bash
-npx skills remove -g loki-session loki-join loki-sacred loki-timeline story-combine repo-multiverse
+npx skills remove -g loki-session loki-join loki-leave loki-sacred loki-timeline story-combine repo-multiverse
 ```
 
-手動安裝的話，刪掉 `~/.claude/skills/` 裡那 6 個連結，有做 `loki` 連結的話也一併刪掉。各 repo 的設定和狀態在 `~/.claude/multiverse/`，不需要了再自己刪除。
+手動安裝的話，刪掉 `~/.claude/skills/` 裡那 7 個連結，有做 `loki` 連結的話也一併刪掉。各 repo 的設定和狀態在 `~/.claude/multiverse/`，不需要了再自己刪除。
 
 ## 授權
 
