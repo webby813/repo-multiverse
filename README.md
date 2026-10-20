@@ -1,5 +1,7 @@
 # repo-multiverse
 
+繁體中文 | [English](README.en.md)
+
 多個 Claude Code session 同時開發同一個 repo 時用的把關流程。各 session 在自己的 worktree 開工作分支，只有把關者能把成果合進整合分支（sacred timeline），一次合一個，先在暫存 worktree 驗證、再 fast-forward，而且每次都要使用者批准。這樣沒經過審查的東西就不會被塞進 repo。
 
 **只在兩種情況動用：使用者要求，或要和其他 session 協作。** 一個 session 自己在分支上做事時用不到這套。
