@@ -1,0 +1,6 @@
+{
+  "name": "repo-multiverse",
+  "description": "Gatekeeper workflow for several Claude sessions on one repo: live sessions, gatekeeper/branch timeline, verified one-at-a-time combines into the integration branch.",
+  "version": "0.1.0",
+  "author": { "name": "webby" }
+}
