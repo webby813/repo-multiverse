@@ -178,6 +178,10 @@ npx skills remove -g loki-session loki-join loki-sacred loki-timeline story-comb
 
 手動安裝的話，刪掉 `~/.claude/skills/` 裡那 7 個連結即可。各 repo 的設定和狀態在 `~/.claude/multiverse/`，不需要了再自己刪除。
 
+## 授權
+
+[MIT](LICENSE)
+
 ## 聲明
 
 本專案是非官方的個人作品，與 Marvel Studios、Disney 沒有任何關係。Loki、TVA 等名稱與概念屬於其權利人，這裡只是借來作為靈感與命名。

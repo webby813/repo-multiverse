@@ -178,6 +178,10 @@ npx skills remove -g loki-session loki-join loki-sacred loki-timeline story-comb
 
 If you installed manually, delete those 7 links from `~/.claude/skills/`. Each repo's config and state are in `~/.claude/multiverse/`; delete them yourself once you no longer need them.
 
+## License
+
+[MIT](LICENSE)
+
 ## Disclaimer
 
 This is an unofficial personal project with no affiliation with Marvel Studios or Disney. Loki, the TVA and related names and concepts belong to their respective owners; they are borrowed here only as inspiration and for naming.
