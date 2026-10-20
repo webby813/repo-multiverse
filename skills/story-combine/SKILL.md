@@ -36,7 +36,7 @@ A main timeline merges the branches it reviewed into the integration branch, one
 ## Finish
 
 - Send the combined template once to each live registered session (`S sessions`), including the main timelines told before.
-- A merged branch's worktree can go once its owner is done with it or its session has ended: `git worktree remove <path>`, never `--force`. Keep the branch.
+- The owner removes its merged worktree with /loki-leave. When the owner's session has ended, remove it here: `git worktree remove <path>`, never `--force`. Keep the branch.
 - Report to the user in the shape below. Push only when the user says so.
 
 ## Report to the user

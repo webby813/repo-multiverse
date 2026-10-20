@@ -1,7 +1,7 @@
 ---
 name: loki-join
-description: Use only when the user asks this session to join the repo-multiverse workflow (work under a main timeline), to register or update one of its work branches, to hand a branch in as ready, or to leave; or when its main timeline assigns it a branch; or when the user types /loki-join.
-argument-hint: "[<main timeline name>] | branch <name> [ready] | leave"
+description: Use only when the user asks this session to join the repo-multiverse workflow (work under a main timeline), to register or update one of its work branches, or to hand a branch in as ready; or when its main timeline assigns it a branch; or when the user types /loki-join.
+argument-hint: "[<main timeline name>] | branch <name> [ready]"
 ---
 
 # loki-join
@@ -14,7 +14,6 @@ argument-hint: "[<main timeline name>] | branch <name> [ready] | leave"
 | join a named main timeline | `S join --to <name> [--story "<task>"]` |
 | add a work branch | create its worktree first (below), then `S branch add <branch>` |
 | hand a branch in | `S branch status <branch> --status ready --note "<summary>"`, then send the ready template to your main timeline |
-| leave | `S leave` |
 
 ## Join outcomes
 
@@ -31,5 +30,6 @@ argument-hint: "[<main timeline name>] | branch <name> [ready] | leave"
 - Commit in small focused commits.
 - Before handing in: rebase onto the integration branch tip (only if the branch was never pushed), run the verify once on the final commit, and put the result and its sha in the ready message so the combine can reuse it.
 - Then wait for your main timeline's reply. A worker never merges into the integration branch.
+- When the combined message says your branch is in and nothing else is left to do, tell the user that /loki-leave wraps this session up.
 
 No config.json yet: point the user to /repo-multiverse init. Template wording and the shared rules: `${CLAUDE_SKILL_DIR}/../repo-multiverse/SKILL.md`.

@@ -1,6 +1,6 @@
 ---
 name: repo-multiverse
-description: Use only when the user explicitly asks to set up, explain or change the repo-multiverse multi-session workflow for a repository (main timeline sessions, worker sessions under them, one shared integration branch), or when another repo-multiverse skill (loki-session, loki-join, loki-sacred, loki-timeline, story-combine) points here for config or rules.
+description: Use only when the user explicitly asks to set up, explain or change the repo-multiverse multi-session workflow for a repository (main timeline sessions, worker sessions under them, one shared integration branch), or when another repo-multiverse skill (loki-session, loki-join, loki-leave, loki-sacred, loki-timeline, story-combine) points here for config or rules.
 argument-hint: "[init | rules]"
 ---
 
@@ -16,7 +16,7 @@ The set manages sessions. Use it only when the user asks, or while coordinating 
 |---|---|---|
 | User | starts sessions, says what gets combined and when to push | — |
 | Main timeline (/loki-sacred) | reviews every hand-in from its workers, plans a conflict-free order, combines with /story-combine, tells the other sessions | combines what the user didn't ask for, pushes without the user |
-| Worker (/loki-join) | one task on its own branch and worktree, hands it in to its main timeline | merges into the integration branch, touches another session's files |
+| Worker (/loki-join) | one task on its own branch and worktree, hands it in to its main timeline, leaves with /loki-leave once its work is in | merges into the integration branch, touches another session's files |
 
 ## Names
 
@@ -48,6 +48,7 @@ Helper `S` = `python3 ${CLAUDE_SKILL_DIR}/scripts/multiverse.py` (`--help` lists
 - returned: `<me>: <branch> sent back: <reasons>. Fix it on the branch and send ready again.` A main timeline to the branch owner.
 - combining: `<me>: combining <branches> into <integration> now; hold your own combines until I report.` To the other main timelines.
 - combined: `<me>: <integration> is now <sha> (merged <branches>; verify <run: result | reused from <who> on <sha>: result>). Not pushed. Branch new work from <sha>.` To every live registered session.
+- left: `<me> left <timeline>; merged <branches|none>, still open <branches|none>.` A worker to its main timeline.
 - The report to the user after a combine has its own fixed shape: see story-combine.
 
 ## Small fixes
