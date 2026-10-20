@@ -1,0 +1,19 @@
+{
+  "integration_branch": "feature/demo",
+  "verify_quick": "tools/test.sh {udid} {prefix}",
+  "verify_full": [
+    "tools/test.sh {udid}"
+  ],
+  "worktree_setup": [
+    "[ -d Pods ] || cp -Rc {main}/Pods Pods"
+  ],
+  "extra_locks": ["build/test.lock"],
+  "protected_devices": ["<the user's own simulator or device id>"],
+  "shared_files": {
+    "*/Localizable.strings": "append new keys at the end; on conflict keep both sides",
+    "*.xcodeproj/project.pbxproj": "keep both sides"
+  },
+  "notes": [
+    "Short repo-specific warnings for gatekeepers."
+  ]
+}
