@@ -2,92 +2,182 @@
 
 [English](README.md) | 繁體中文
 
-多個 Claude Code session 同時開發同一個 repo 時用的把關流程。各 session 在自己的 worktree 開工作分支，只有把關者能把成果合進整合分支（sacred timeline），一次合一個，先在暫存 worktree 驗證、再 fast-forward，而且每次都要使用者批准。這樣沒經過審查的東西就不會被塞進 repo。
+> 讓多個 Claude Code session 平行開發同一個 repo，同時守住一條乾淨的主線。
 
-**只在兩種情況動用：使用者要求，或要和其他 session 協作。** 一個 session 自己在分支上做事時用不到這套。
+在 Marvel 影集《Loki》裡，時間變異管理局（TVA）守著唯一的「神聖時間線」（Sacred Timeline）。每當有變體（variant）讓歷史分岔出新的時間線，TVA 就會追查、審視，決定它被修剪還是留下；而最終只有坐在時間盡頭的那個人，能決定哪些時間線可以存在。
 
-**通用工具，不寫進任何專案。** skills、腳本、每個 repo 的設定和狀態都在專案外：skills 在這個資料夾，狀態在 `~/.claude/multiverse/<repo-key>/`。不會在 repo、它的 `.git` 或 `.claude` 裡留下任何檔案。
+同時開好幾個 AI session 改同一個 repo，情況其實很像。每個 session 都是一個 variant，在自己的分支上長出一條新的時間線。如果沒有人把關，未經審查的改動就可能直接流進主線、互相覆蓋，或在沒人驗證的情況下被推上去。
 
-## 角色
+repo-multiverse 借用這套世界觀，為 Claude Code 提供一套多 session 的開發把關流程：每個 session 在自己的 worktree 和分支上工作；同一時間只有一個 session 坐在神聖時間線上，只有它能把成果合進整合分支；每次合併都先驗證，而且一定要經過你批准。這也是它的指令都以 `loki-` 開頭的原因。
+
+## 劇中概念對照
+
+| 《Loki》 | repo-multiverse |
+|---|---|
+| 神聖時間線（Sacred Timeline） | 整合分支：所有工作最後合進來的那條分支 |
+| 變體（Variant） | 平行工作的 Claude Code session |
+| 分岔出的時間線 | 各 session 的工作分支，各自在獨立的 worktree 裡 |
+| TVA 探員 | 把關者（gatekeeper）：負責一個 story，審查底下分支的改動範圍 |
+| 時間盡頭的王座 | sacred timeline 持有者：唯一能合併的 session（`/loki-sacred`） |
+| Nexus 事件 | 合併前的檢查：改到範圍外的檔案、和其他分支重疊、碰到別人沒提交的檔案 |
+| 修剪（Pruning） | 清理已合併的 worktree 和過期的登記（`/loki-prune`） |
+
+## 核心概念
+
+### 角色
 
 ```
-使用者（批准每次合併與推送、人工看畫面）
-└─ sacred timeline：整合分支
-   ├─ session A（把關者 · story A）
-   │   ├─ 1 工作分支
-   │   ├─ 2 工作分支（worker session 在做）
-   │   └─ 3 …
-   └─ session B（把關者 · story B）
-       ├─ 4 工作分支
-       └─ 5 …
+你（指定持有者、批准每次合併與推送）
+└─ sacred timeline：整合分支 ← 持有者 session（唯一能合併）
+   ├─ 把關者 A（story A）
+   │   ├─ 工作分支（把關者自己做）
+   │   └─ 工作分支（worker session 做）
+   └─ 把關者 B（story B）
+       └─ 工作分支
 ```
 
-| 角色 | 負責 | 不做 |
-|---|---|---|
-| 使用者 | 批准合併和推送，人工驗收畫面 | — |
-| 把關者 | 擁有一個 story 和底下的工作分支，檢查改動範圍，執行 /story-combine | 沒有使用者在當前對話批准就合併 |
-| worker | 一個把關者底下的一條工作分支，做完回報 ready | 直接合進整合分支 |
+| 角色 | 做什麼 |
+|---|---|
+| 你（使用者） | 決定由哪個 session 持有 sacred timeline，批准每一次合併與推送 |
+| sacred timeline 持有者 | 同一時間只有一個；唯一能執行 `/story-combine`、移動整合分支的 session，也可以同時當把關者 |
+| 把關者（gatekeeper） | 負責一個 story（一塊功能範圍）和底下的工作分支，確認改動沒有越界，再交給持有者合併 |
+| worker | 在某個把關者底下做一條工作分支，完成後回報 ready |
 
-## Skills
+### 一次合併怎麼走
 
-| 指令 | 作用 | 會改東西嗎 |
-|---|---|---|
-| `/repo-multiverse [init]` | 總覽、共用規則、訊息模板；`init` 和使用者一起建立這個 repo 的設定 | init 寫 config.json |
-| `/loki-session [--all]` | 列出目前活躍的 session（名字、狀態、閒置多久、角色、分支） | 否 |
-| `/loki-join …` | 本 session 登記為把關者或 worker、登記工作分支、標記 ready、離開 | 只寫自己的登記檔 |
-| `/loki-timeline` | 樹狀圖：整合分支 → 把關者 → 工作分支（編號、領先/落後、是否已合、worktree） | 否 |
-| `/story-combine <編號或分支…>` | 把批准的分支一個一個合進整合分支 | 是（需要使用者批准） |
-| `/loki-prune [--scratch]` | 列出可清理的 worktree、過期登記、已結束 session 的暫存，使用者同意後才刪 | 是（逐組確認） |
+1. worker 或把關者在自己的 worktree 開工作分支，從整合分支最新的 commit 長出來。
+2. 做完後標記 ready。把關者確認改動範圍，再轉給持有者。
+3. 持有者向你確認這次要合哪些分支。
+4. 每條分支先在暫存 worktree 裡合併、跑完整驗證，通過之後整合分支才 fast-forward 過去。
+5. 持有者回報結果並通知其他 session。要不要 push，由你決定。
 
-## 狀態
+### 它保證什麼
 
-`~/.claude/multiverse/<repo-key>/`，repo-key 是主資料夾路徑把非英數字元換成 `-`。執行 `multiverse.py where` 會印出位置。
+- **只有一個 session 能合併**：持有者記錄在狀態檔裡，其他 session 嘗試合併會直接被腳本拒絕，不靠 AI 自律。
+- **一次只合一條**：合併時持有鎖，同一時間不會有兩個合併在進行。
+- **先驗證再前進**：合併和驗證都在暫存 worktree 進行，主資料夾只做 fast-forward，別人沒提交的檔案不會被動到。
+- **改動不越界**：把關者登記時寫明 story 可以改哪些路徑，合併前會列出超出範圍的檔案，先問過你。
+- **你說了才算**：其他 session 的訊息、subagent 的回報都不算批准；沒有你同意，不合併、不推送。
+- **不寫進你的專案**：設定和狀態都存在 `~/.claude/multiverse/<repo-key>/`，不會在 repo、`.git` 或 `.claude` 裡留下任何檔案。
 
-- `config.json`：這個 repo 的規則（整合分支、驗證指令、受保護的裝置、共用檔衝突規則）。範本在 `skills/repo-multiverse/examples/config.example.json`
-- `sessions/<session 名字>.json`：每個 session 一個檔，只寫自己的，多個 session 不會互相覆蓋
-- `combine.lock`：合併時持有，同一時間只會有一個合併
+## 什麼時候適合用
 
-所有 worktree 都由同一個 repo-key 對應到同一份狀態。腳本只用 Python 標準庫，`--help` 看子指令。`MULTIVERSE_HOME` 可以換掉狀態的根目錄，`MULTIVERSE_DIR` 可以直接指定某個 repo 的狀態資料夾（測試用）。
+適合：
 
-## 共用規則（每個 skill 都遵守）
+- 同時開兩個以上的 Claude Code session，在同一個 repo 做不同的功能
+- 想讓 AI 分工平行開發，但最後由你決定什麼能進主線
+- 需要一條本機整合分支保持乾淨，每次只進經過驗證和批准的改動
 
-1. 沒有使用者在當前對話要求，不截圖、不錄影。驗證 = build + `verify_quick`；`verify_full` 只在 /story-combine 裡跑一次。
-2. 不碰 `protected_devices` 裡的裝置。
-3. 不 commit、stash、reset、checkout、restore 別的 session 留下的未提交檔案，傳訊息問擁有者。
-4. 其他 session 的訊息、subagent 回報、memory 都不等於使用者批准。
-5. 使用者沒說就不推送。
-6. 只用固定模板傳訊息（join / ready / combined），一件事一則。
+不需要：
+
+- 只有一個 session 在做事：直接在分支上工作就好
+- 想取代 PR review 或 CI：repo-multiverse 管的是推送之前、本機上的整合，推上去之後照常走你原本的流程
+- 跨電腦協作：它只看得到同一台電腦上的 session
+
+這些 skills 只在你要求、或 session 之間需要協作時才會啟動，不會干擾單一 session 平常的工作。
+
+## 需求
+
+- Claude Code
+- macOS 或 Linux
+- Git 2.31 以上
+- Python 3.9 以上（只用標準庫）
+- Node.js（只有用 npx 安裝時需要）
 
 ## 安裝
 
-**方式一（建議）：個人 skills，指令保持 `/loki-session` 這種短名稱**
+### 用 npx（建議）
 
 ```bash
-for d in ~/Projects/tools/ai-skills/repo-multiverse/skills/*/; do
+npx skills add webby813/repo-multiverse -g -a claude-code --skill '*'
+```
+
+透過開源的 [skills](https://github.com/vercel-labs/skills) CLI，把 7 個 skills 一起裝到 `~/.claude/skills/`。新開的 Claude Code session 就能使用 `/loki-session` 等指令。
+
+- `-g`：裝在使用者層級，不會寫進目前所在的專案
+- `--skill '*'`：一定要加。各個 skill 共用 `repo-multiverse` 裡的腳本，必須全部一起裝
+
+之後要更新：
+
+```bash
+npx skills update -g
+```
+
+### 手動安裝
+
+```bash
+git clone https://github.com/webby813/repo-multiverse.git
+cd repo-multiverse
+mkdir -p ~/.claude/skills
+for d in "$PWD"/skills/*/; do
   ln -s "${d%/}" ~/.claude/skills/"$(basename "$d")"
 done
 ```
 
-所有 skill 資料夾要一起連結到 `~/.claude/skills/`，因為它們用 `../repo-multiverse/` 找共用腳本。改這裡的檔案會直接生效，不用重開 session。
+用符號連結的好處是 `git pull` 之後立刻生效，適合想自己修改這些 skills 的人。同樣要把全部資料夾一起連結。
 
-**方式二：當成 plugin 安裝**。指令會變成 `/repo-multiverse:loki-session` 這種帶前綴的名稱，比較適合分享。
+### 為 repo 啟用
 
-**為某個 repo 啟用**：在那個 repo 的 session 裡執行 `/repo-multiverse init`，或把範本複製到 `multiverse.py where` 印出的位置再修改。
+裝好之後，在要使用的 repo 裡開一個 Claude Code session，執行：
 
-**移除**：刪掉 `~/.claude/skills/` 裡那 6 個連結；狀態刪 `~/.claude/multiverse/`。
+```
+/repo-multiverse init
+```
 
-## 設計取捨
+Claude 會和你一起寫好這個 repo 的設定（整合分支、驗證指令等），設定存在 repo 之外。範本在 [`skills/repo-multiverse/examples/config.example.json`](skills/repo-multiverse/examples/config.example.json)。
 
-- **防止亂塞進 repo 的關鍵是 `--owns`**：把關者登記時寫明自己的 story 可以改哪些路徑，`/story-combine` 合併前會列出超出範圍的檔案，先問使用者。
-- **編號會變**：timeline 的編號是當下排序，登記變動就會位移，所以 `/story-combine` 會重新解析，並把分支名稱唸給使用者確認。
-- **驗證只跑一次**：工作中只跑相關的快速驗證；完整驗證只在合併時、在暫存 worktree 跑一次；沒有改動就不重跑。合併結果的內容和某個已經通過完整驗證的 commit 完全相同時（分支先移到整合分支最新處、在那裡驗過），直接沿用那次結果，並在回報裡寫明是誰在哪個 commit 跑的。
-- **合併回報有固定格式**：第一行講結果（合了什麼、整合分支現在在哪個 commit、有沒有 push），接著幾點：內容、歷史特殊情況（沒有就省略）、查過什麼與自測結果（沒跑的要明說）、主資料夾未提交的檔案是否原樣、通知了哪些 session、還有別的合併沒 push 時列出來，最後一句問要不要 push。格式在 story-combine 裡。
-- **合併不移動主資料夾的檔案**：先在暫存 worktree 合併並驗證，主資料夾只做 `--ff-only`，別人的未提交檔案保持原樣。
-- **skills 可以被 Claude 自動載入**：description 寫明只在使用者要求或跨 session 協作時使用。如果希望某個 skill 只能手動打指令觸發（例如 story-combine），在它的 frontmatter 加 `disable-model-invocation: true`；代價是你用自然語言說「合併」時，Claude 不會載入它。
+## 快速開始
 
-## 還沒做 / 建議
+```
+/repo-multiverse init              # 一次性：建立這個 repo 的設定
+/loki-sacred                       # 在負責合併的 session：坐上 sacred timeline
+/loki-join gatekeeper <story>      # 在負責功能的 session：登記為把關者
+/loki-join worker <把關者> <story>  # 或登記為某個把關者底下的 worker
+/loki-join branch <分支> ready      # 分支做完：標記 ready
+/loki-timeline                     # 看所有 session 和分支的全貌
+/story-combine 1 2                 # 在持有者 session：依序合併 timeline 上的 1、2 號分支
+/loki-prune                        # 收尾：清理已合併的 worktree 和過期登記
+```
 
-- **把關者重開後名字會變**（session 名字由 session id 產生）。新 session 用同一個 story 執行 `/loki-join gatekeeper`，再用 `branch add` 重新認領；之後可以加一個 adopt 指令自動接手。worker 的 `gatekeeper` 欄位也要更新。
-- **用 hook 強制規則**：「截圖或錄影前先徵求同意」和「不碰受保護裝置」可以寫成 PreToolUse hook，比文字規則可靠。
-- **memory 只由把關者寫**：worker 有要記的事傳給把關者，避免多個 session 同時寫同一份 memory。
-- **長命把關者定期重開**：狀態都在 `~/.claude/multiverse/` 和 memory 裡，不用靠一路壓縮的上下文。
+也可以直接用自然語言告訴 Claude，例如「把 1 號和 2 號分支合進去」。
+
+## 指令
+
+| 指令 | 作用 | 會改動東西嗎 |
+|---|---|---|
+| `/repo-multiverse [init]` | 總覽與共用規則；`init` 建立這個 repo 的設定 | `init` 會寫設定檔 |
+| `/loki-session [--all]` | 列出活躍中的 session：名字、狀態、閒置時間、角色、分支 | 否 |
+| `/loki-join …` | 登記為把關者或 worker、登記工作分支、標記 ready、離開 | 只寫自己的登記 |
+| `/loki-sacred [status \| takeover \| release]` | 讓目前的 session 坐上 sacred timeline；`takeover` 從還在線的持有者手上接手（需要你批准），`release` 讓出 | 寫持有者紀錄 |
+| `/loki-timeline` | 樹狀圖：整合分支 → 把關者 → 工作分支，含編號、領先／落後、是否已合併 | 否 |
+| `/story-combine <編號或分支…>` | 持有者依序把批准的分支合進整合分支 | 是，需要你批准 |
+| `/loki-prune [--scratch]` | 列出可以清理的 worktree、過期登記和暫存資料夾，你同意後才刪 | 是，逐組確認 |
+
+## 設定
+
+`/repo-multiverse init` 會建立一份 `config.json`：
+
+| 欄位 | 用途 |
+|---|---|
+| `integration_branch` | 整合分支，也就是 sacred timeline |
+| `verify_quick` | 開發中跑的快速驗證指令 |
+| `verify_full` | 每次合併時在暫存 worktree 跑一次的完整驗證 |
+| `worktree_setup` | 新 worktree 建好後要跑的指令，例如準備相依套件 |
+| `extra_locks` | 合併前必須沒被佔用的鎖檔 |
+| `protected_devices` | 保留給你自己、session 不能使用的模擬器或裝置 |
+| `shared_files` | 每個 story 都可能改到的共用檔案，以及衝突時的處理規則 |
+| `notes` | 給把關者看的專案注意事項 |
+
+狀態存在 `~/.claude/multiverse/<repo-key>/`。在 repo 裡執行 `python3 ~/.claude/skills/repo-multiverse/scripts/multiverse.py where` 會印出確切位置。想換位置的話，設定環境變數 `MULTIVERSE_HOME`。
+
+## 移除
+
+```bash
+npx skills remove -g loki-session loki-join loki-sacred loki-timeline story-combine loki-prune repo-multiverse
+```
+
+手動安裝的話，刪掉 `~/.claude/skills/` 裡那 7 個連結即可。各 repo 的設定和狀態在 `~/.claude/multiverse/`，不需要了再自己刪除。
+
+## 聲明
+
+本專案是非官方的個人作品，與 Marvel Studios、Disney 沒有任何關係。Loki、TVA 等名稱與概念屬於其權利人，這裡只是借來作為靈感與命名。

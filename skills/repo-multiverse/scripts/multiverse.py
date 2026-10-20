@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""repo-multiverse helper: live sessions, registrations, timeline, scope check, combine lock.
+"""repo-multiverse helper: live sessions, registrations, sacred timeline holder, timeline, scope check, combine lock.
 
 Reads ~/.claude/sessions and git. Writes only ~/.claude/multiverse/<repo-key>/, never inside the repo.
 Run with --help for subcommands.
@@ -131,6 +131,25 @@ def reg_path(name):
     return os.path.join(mv_dir(), 'sessions', f'{name}.json')
 
 
+def sacred_path():
+    return os.path.join(mv_dir(), 'sacred.json')
+
+
+def sacred_holder():
+    """(record, live) of the session holding the sacred timeline; (None, False) when nobody does."""
+    h = load_json(sacred_path())
+    if not h:
+        return None, False
+    return h, h.get('name') in {s.get('name') for s in live_sessions()}
+
+
+def sacred_text():
+    h, live = sacred_holder()
+    if not h:
+        return 'nobody (/loki-sacred)'
+    return h['name'] + ('' if live else ' (gone; /loki-sacred takes over)')
+
+
 def integration():
     b = config().get('integration_branch')
     if not b:
@@ -189,8 +208,10 @@ def cmd_where(a):
 def cmd_whoami(a):
     s = my_session()
     reg = registrations().get(s.get('name'))
+    h, _ = sacred_holder()
     print(f"{s.get('name')}  pid {s.get('pid')}  session {s.get('sessionId', '')[:8]}  "
-          f"role {reg.get('role') if reg else '(not joined)'}")
+          f"role {reg.get('role') if reg else '(not joined)'}  "
+          f"sacred {'yes' if h and h.get('name') == s.get('name') else 'no'}")
 
 
 def cmd_sessions(a):
@@ -202,6 +223,7 @@ def cmd_sessions(a):
     cfg = config()
     tip = git('rev-parse', '--short', cfg['integration_branch'], check=False) if cfg.get('integration_branch') else ''
     print(f"repo {os.path.basename(main_path())}  integration {cfg.get('integration_branch', '(not set)')} {tip}")
+    print(f"sacred timeline held by {sacred_text()}")
     print(f"{'NAME':28} {'KIND':5} {'STATUS':6} {'IDLE':5} {'ROLE':10} {'GATEKEEPER':20} STORY / BRANCHES")
     for s in sorted(live, key=lambda s: s.get('name', '')):
         n = s.get('name', '?')
@@ -267,10 +289,53 @@ def cmd_branch(a):
 
 
 def cmd_leave(a):
-    path = reg_path(my_session()['name'])
+    name = my_session()['name']
+    path = reg_path(name)
     if os.path.exists(path):
         os.remove(path)
     print('left')
+    h, _ = sacred_holder()
+    if h and h.get('name') == name:
+        print('still holding the sacred timeline: `sacred release` to step down')
+
+
+def cmd_sacred(a):
+    integ = integration()
+    h, live = sacred_holder()
+    if a.action == 'status':
+        print(f'sacred timeline {integ} held by {sacred_text()}' + (f"  since {h['since']}" if h else ''))
+        return
+    me = my_session()
+    name = me['name']
+    mine = bool(h) and h.get('name') == name
+    combining = load_json(os.path.join(lock_path(), 'owner.json'))
+    if a.action == 'release':
+        if not mine:
+            sys.exit(f'{name} does not hold the sacred timeline (held by {sacred_text()})')
+        if combining and combining.get('name') == name:
+            sys.exit('a combine of yours holds the lock: finish it and `lock release` first')
+        os.remove(sacred_path())
+        print(f'{name} released the sacred timeline {integ}; nobody holds it now')
+        return
+    tip = git('rev-parse', '--verify', '--quiet', '--short', integ, check=False)
+    if not tip:
+        sys.exit(f'no local branch {integ}: check integration_branch in config.json')
+    if mine:
+        print(f"{name} already holds the sacred timeline {integ} @ {tip} (since {h['since']})")
+        return
+    if h and live and not a.takeover:
+        print(f"HELD: {h['name']} holds the sacred timeline since {h['since']} and is live. "
+              "Take over only with the user's approval: --takeover")
+        sys.exit(5)
+    if combining and alive(combining.get('pid')) and combining.get('name') != name:
+        print(f"BUSY: {combining['name']} is combining since {combining['time']}; claim after it finishes")
+        sys.exit(5)
+    save_json(sacred_path(), {
+        'name': name, 'pid': me.get('pid'), 'session': me.get('sessionId'),
+        'since': datetime.datetime.now().isoformat(timespec='seconds'),
+        'previous': h.get('name') if h else None})
+    prev = f"; took over from {h['name']}{'' if live else ' (gone)'}" if h else ''
+    print(f'{name} now holds the sacred timeline {integ} @ {tip}{prev}')
 
 
 def cmd_timeline(a):
@@ -284,7 +349,7 @@ def cmd_timeline(a):
     live = {s.get('name'): s for s in live_sessions()}
     regs = registrations()
     wt_by_branch = {w.get('branch'): w for w in worktrees() if w.get('branch')}
-    print(f'sacred timeline  {integ} @ {tip}{unpushed}')
+    print(f'sacred timeline  {integ} @ {tip}{unpushed}  · held by {sacred_text()}')
     rows = ordered_branches()
     claimed = set()
     gks = sorted(n for n, r in regs.items() if r.get('role') == 'gatekeeper')
@@ -396,6 +461,10 @@ def cmd_lock(a):
         return
     me = my_session()
     if a.action == 'acquire':
+        h, live = sacred_holder()
+        if not h or h.get('name') != me['name']:
+            print(f"NOT SACRED: only the sacred timeline holder combines; held by {sacred_text()}")
+            sys.exit(6)
         try:
             os.mkdir(lp)
         except FileExistsError:
@@ -490,6 +559,10 @@ def main():
     s.add_argument('--note')
     s.set_defaults(f=cmd_branch)
     sp.add_parser('leave').set_defaults(f=cmd_leave)
+    s = sp.add_parser('sacred', help='the one session that combines into the integration branch')
+    s.add_argument('action', nargs='?', default='status', choices=['status', 'claim', 'release'])
+    s.add_argument('--takeover', action='store_true', help='claim from a live holder (user approval only)')
+    s.set_defaults(f=cmd_sacred)
     s = sp.add_parser('timeline')
     s.add_argument('--days', type=int, default=14, help='unclaimed branches committed within N days')
     s.set_defaults(f=cmd_timeline)

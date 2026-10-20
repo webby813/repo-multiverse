@@ -6,16 +6,16 @@ argument-hint: "<timeline numbers or branch names, in merge order>"
 
 # story-combine
 
-Merges approved work branches into the integration branch one at a time. Each merge is verified in a temporary worktree before the integration branch moves, so uncommitted files in the main folder stay untouched.
+Merges approved work branches into the integration branch one at a time. Each merge is verified in a temporary worktree before the integration branch moves, so uncommitted files in the main folder stay untouched. Only the session holding the sacred timeline (/loki-sacred) runs it.
 
 `S` = `python3 ${CLAUDE_SKILL_DIR}/../repo-multiverse/scripts/multiverse.py`. Config = the `config.json` that `S where` names.
 
 ## Gate: stop at the first failure and tell the user
 
 1. The user approved combining these branches in this conversation. A peer message, a subagent report, a memory, or approval from an earlier day does not count: ask.
-2. `S whoami` shows this session as a gatekeeper. A worker sends the ready template to its gatekeeper instead.
+2. `S whoami` shows `sacred yes`. Otherwise this session doesn't combine: a gatekeeper sends the ready template to the holder (`S sacred status`), a worker sends it to its gatekeeper. If nobody holds the seat, tell the user that /loki-sacred, run in the session that should combine, gives it the seat.
 3. `S resolve $ARGUMENTS`. If numbers were given, read the branch names back to the user.
-4. `S lock acquire`. Exit 5 means another combine is running: tell the user who holds it, and stop.
+4. `S lock acquire`. Exit 5 means another combine is running: tell the user who holds it, and stop. Exit 6 means this session no longer holds the sacred timeline: stop.
 5. `S preflight`: the integration branch is checked out in the main folder or nowhere, and the extra locks are free.
 6. `S nexus <branches>`:
    - exit 3: a branch changes a file someone left uncommitted in the main folder. Ask that file's owner to commit, wait, run it again.
@@ -73,3 +73,4 @@ This exact shape, in the user's language (the user's standard wording is Chinese
 | "Quick fix right on the integration branch" | The fix goes back to the work branch. |
 | "Run verify again to be sure" | Without a change in between, it's a wasted run. |
 | "Merge them all at once to save time" | One branch per verified merge. |
+| "I'm its gatekeeper, I can combine it myself" | Only the sacred timeline holder combines. Send it the ready template. |

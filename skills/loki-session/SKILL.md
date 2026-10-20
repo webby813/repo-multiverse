@@ -13,6 +13,7 @@ Read-only list of live Claude sessions on this repo, with their role in the mult
    - sessions shown `(not joined)` that work on this repo: the user can ask them to run /loki-join
    - stale registrations: /loki-prune removes them
    - sessions idle for days: the user can close them to free resources
+   - nobody holds the sacred timeline, or its holder is gone: no combine can run until a session runs /loki-sacred
 3. The NAME column is what SendMessage takes. If the script fails, ListAgents shows the same names.
 
 Do not message anyone, write files, or change git state.

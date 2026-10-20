@@ -15,7 +15,7 @@ Registers this session in `~/.claude/multiverse/<repo-key>/sessions/<name>.json`
 | join as gatekeeper | `S join --role gatekeeper --story "<story>" --sim <udid> --owns "<glob>"` (repeat `--owns`) |
 | join as worker | `S join --role worker --gatekeeper <name> --story "<story>" --sim <udid>` |
 | add a work branch | create the worktree first (see below), then `S branch add <branch>` |
-| branch is ready | `S branch status <branch> --status ready --note "<summary>"`, then send the ready template to the gatekeeper |
+| branch is ready | `S branch status <branch> --status ready --note "<summary>"`, then send the ready template: a worker to its gatekeeper, a gatekeeper to the sacred timeline holder (`S sacred status`). Skip it when the receiver is this session |
 | leave | `S leave` |
 
 - New work branches start from the integration branch tip, each in its own worktree, never in the main folder: `git worktree add -b <branch> <path> <integration>`, then run the config's `worktree_setup` commands there.
