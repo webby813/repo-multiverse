@@ -406,10 +406,23 @@ def cmd_leave(a):
     me = my_session()
     sid = me.get('sessionId')
     regs, live = registrations(), live_by_sid()
-    was = regs.get(sid, {}).get('role')
+    r = regs.get(sid)
+    if not r:
+        print(f"{me.get('name')} was not joined")
+        return
     drop_reg(sid)
-    print('left')
-    if was == 'timeline':
+    print(f"{me.get('name')} left")
+    integ, _ = integration_tip()
+    wt_by_branch = {w.get('branch'): w for w in worktrees() if w.get('branch')}
+    for b in r.get('branches', []):
+        if not branch_exists(b['name']):
+            state = 'missing'
+        else:
+            ah, _ = ahead_behind(integ, b['name']) if integ else (None, None)
+            state = 'merged' if ah == 0 else (f'not merged (+{ah})' if ah else 'unknown')
+        wt = wt_by_branch.get(b['name'])
+        print(f"branch {b['name']}  {state}" + (f"  wt {wt['path']}" if wt else ''))
+    if r.get('role') == 'timeline':
         orphaned_workers(sid, regs, live)
 
 
@@ -518,7 +531,7 @@ def main():
     s.add_argument('--status', choices=['working', 'ready', 'blocked', 'merged'])
     s.add_argument('--note')
     s.set_defaults(f=cmd_branch)
-    sp.add_parser('leave', help='remove this session\'s registration').set_defaults(f=cmd_leave)
+    sp.add_parser('leave', help='remove this session\'s registration and list its branches').set_defaults(f=cmd_leave)
     sp.add_parser('forget', help='remove the registrations of ended sessions').set_defaults(f=cmd_forget)
     sp.add_parser('timeline', help='tree: integration branch -> main timelines -> workers and branches'
                   ).set_defaults(f=cmd_timeline)
