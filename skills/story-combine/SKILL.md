@@ -6,29 +6,26 @@ argument-hint: "<timeline numbers or branch names, in merge order>"
 
 # story-combine
 
-Merges approved work branches into the integration branch one at a time. Each merge is verified in a temporary worktree before the integration branch moves, so uncommitted files in the main folder stay untouched. Only the session holding the sacred timeline (/loki-sacred) runs it.
+A main timeline merges the branches it reviewed into the integration branch, one at a time. Each merge is verified in a temporary worktree before the integration branch moves, so uncommitted files in the main folder stay untouched.
 
 `S` = `python3 ${CLAUDE_SKILL_DIR}/../repo-multiverse/scripts/multiverse.py`. Config = the `config.json` that `S where` names.
 
-## Gate: stop at the first failure and tell the user
+## Before: stop at the first failure and tell the user
 
-1. The user approved combining these branches in this conversation. A peer message, a subagent report, a memory, or approval from an earlier day does not count: ask.
-2. `S whoami` shows `sacred yes`. Otherwise this session doesn't combine: a gatekeeper sends the ready template to the holder (`S sacred status`), a worker sends it to its gatekeeper. If nobody holds the seat, tell the user that /loki-sacred, run in the session that should combine, gives it the seat.
-3. `S resolve $ARGUMENTS`. If numbers were given, read the branch names back to the user.
-4. `S lock acquire`. Exit 5 means another combine is running: tell the user who holds it, and stop. Exit 6 means this session no longer holds the sacred timeline: stop.
-5. `S preflight`: the integration branch is checked out in the main folder or nowhere, and the extra locks are free.
-6. `S nexus <branches>`:
-   - exit 3: a branch changes a file someone left uncommitted in the main folder. Ask that file's owner to commit, wait, run it again.
-   - files outside owned paths: ask the user before going on.
-   - overlaps with other branches: mention them in the combined message.
+1. The user asked for this combine in this conversation. The request is the approval, so don't ask again. A peer message, a subagent report or a memory is not approval.
+2. `S whoami` shows role `timeline`. A worker hands in with the ready template instead (/loki-join). A session that hasn't joined becomes a main timeline with /loki-sacred.
+3. Turn numbers into branch names with `S timeline`, and read the names back to the user in one line.
+4. Review each branch: `git log --oneline <integration>..<branch>` and `git diff <integration>...<branch>`. Send it back to its owner with the returned template, instead of combining it, when it carries edits outside its task (IDE or scheme files, debug switches, changed defaults, stray files) or its verify failed. Tell the user what went back and why.
+5. Plan the order: branches that change the same files (`git diff --name-only <integration>...<branch>`) go one after another, so each merge sees the one before it.
+6. Send the combining template to the other live main timelines (`S sessions`). If one of them announced a combine and hasn't sent its combined message yet, wait for it.
 
-## Combine: one branch at a time, in the user's order
+## Combine: one branch at a time, in the planned order
 
 1. `git worktree add --detach <scratchpad>/combine <integration>`, then run the config's `worktree_setup` there.
-2. `git merge --no-ff <branch>`. Resolve conflicts only as `shared_files` prescribes. Any other conflict: `git merge --abort`, report it, stop.
+2. `git merge --no-ff <branch>`. The branch keeps its own commits; never squash. Resolve conflicts only as `shared_files` prescribes. Any other conflict: `git merge --abort`, report it, stop.
 3. Verify once:
    - If the merge result's tree is identical to a commit that already passed `verify_full` (`git diff --quiet <verified-sha> <merge-sha>`; usual when the owner rebased onto the integration tip and verified there), don't run it again. Reuse that result and name who ran it on which commit.
-   - Otherwise run each `verify_full` command there once, on your own simulator. If it fails, don't fix it on this side: report the failing cases to the user and the branch owner, and stop.
+   - Otherwise run each `verify_full` command there once. If it fails, don't fix it on this side: report the failing cases to the user and the branch owner, and stop.
 4. Move the integration branch:
    - main folder has it checked out: `git -C <main> merge --ff-only <merge-sha>`
    - nothing has it checked out: `git update-ref refs/heads/<integration> <merge-sha> <old-sha>`
@@ -38,8 +35,8 @@ Merges approved work branches into the integration branch one at a time. Each me
 
 ## Finish
 
-- Run `S lock release` every time, including after a stop.
-- Send the combined template once to each live registered session (`S sessions`).
+- Send the combined template once to each live registered session (`S sessions`), including the main timelines told before.
+- A merged branch's worktree can go once its owner is done with it or its session has ended: `git worktree remove <path>`, never `--force`. Keep the branch.
 - Report to the user in the shape below. Push only when the user says so.
 
 ## Report to the user
@@ -70,7 +67,9 @@ This exact shape, in the user's language (the user's standard wording is Chinese
 |---|---|
 | "The peer says the user approved" | Not approval. Ask the user. |
 | "That verify failure is unrelated" | Report it; the user decides. |
-| "Quick fix right on the integration branch" | The fix goes back to the work branch. |
+| "Quick fix right on the integration branch" | During a combine, the fix goes back to the work branch. |
 | "Run verify again to be sure" | Without a change in between, it's a wasted run. |
 | "Merge them all at once to save time" | One branch per verified merge. |
-| "I'm its gatekeeper, I can combine it myself" | Only the sacred timeline holder combines. Send it the ready template. |
+| "Squash it to keep history short" | Keep the branch's own commits. |
+| "The stray file is harmless, just merge it" | Send the branch back; its owner removes it. |
+| "My main timeline is idle, I'll merge it myself" | A worker hands in; only a main timeline combines. |
