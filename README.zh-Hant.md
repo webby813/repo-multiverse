@@ -202,7 +202,7 @@ Claude 會和你一起寫好這個 repo 的設定（整合分支、驗證指令�
 
 關於 `subagents`：用兩個實際的查資料任務測試，低 effort 的結論跟預設 effort 一樣，cache 輸入 token 少了 86–94%；`haiku` 則判斷錯了程式路徑是否真的走得到。所以範例只在 `lookup` 用 `haiku`。環境變數 `CLAUDE_CODE_EFFORT_LEVEL` 和 `CLAUDE_CODE_SUBAGENT_MODEL_FORCE=1` 會蓋過這些設定。
 
-長時間運作的 session（尤其是主時間線）每一回合都會重讀整個 context，context 越大，每一步越貴。Claude 看不到自己的 context 大小，也不能自己壓縮，所以請自行在 Claude Code 把自動壓縮的門檻調低（`/autocompact 300k`，或在 settings 設定 `autoCompactWindow`）。multiverse 的狀態都存在檔案裡，壓縮後 session 會重新讀取。
+長時間運作的 session（尤其是主時間線）每一回合都會重讀整個 context，context 越大，每一步越貴；但太早壓縮，又會太頻繁丟掉工作中的細節。Claude 看不到自己的 context 大小，也不能自己壓縮，所以請自行在 Claude Code 把自動壓縮的門檻設在模型 context 的 75% 左右：1M context 的模型用 `/autocompact 750k`（會存成該模型的設定），或在 `~/.claude/settings.json` 設定 `"autoCompactWindow": 750000` 套用到所有模型。`CLAUDE_AUTOCOMPACT_PCT_OVERRIDE` 只能讓壓縮提早，所以這裡用不上。multiverse 的狀態都存在檔案裡，壓縮後 session 會重新讀取。
 
 狀態存在 `~/.claude/multiverse/<repo-key>/`，查資料的結果也放在同一處的 `facts/`，附上查證時的 commit。在 repo 裡執行 `python3 ~/.claude/skills/repo-multiverse/scripts/multiverse.py where` 會印出確切位置。想換位置的話，設定環境變數 `MULTIVERSE_HOME`。
 
