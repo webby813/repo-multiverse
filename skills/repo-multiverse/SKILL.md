@@ -27,6 +27,7 @@ Sessions are addressed by name (SendMessage, /loki-session). The standard name i
 `~/.claude/multiverse/<repo-key>/` (`S where` prints it). Nothing is written into the repo, its `.git` or its `.claude`.
 - `config.json`: repo rules (see init)
 - `sessions/<session-id>.json`: one file per session; a session writes only its own
+- `facts/<topic>.md`: what research found, for every session to reuse (rule 10)
 
 Helper `S` = `python3 ${CLAUDE_SKILL_DIR}/scripts/multiverse.py` (`--help` lists subcommands)
 
@@ -40,6 +41,10 @@ Helper `S` = `python3 ${CLAUDE_SKILL_DIR}/scripts/multiverse.py` (`--help` lists
 6. Verify once per change. When a merge result's tree is identical to a commit that already passed, reuse that result instead of running it again.
 7. Message peers only with the templates below, one message per event. Talk to the user in the user's language.
 8. Run the config's `session_setup` once, before the first command that needs what it makes, and use only what it made for this session. /loki-leave removes it.
+9. Give every subagent a tier and pass that tier's `model` and `effort` from the config's `subagents` on the Agent call; leave out a field the tier doesn't set. `research`: how code behaves, whether a path is reachable, where data comes from. `lookup`: only lists where something is defined or used. `review`: reviews, plans, design checks. With no `subagents` key, `research` and `lookup` use `{"effort": "low"}` and `review` uses `{}`.
+10. Before a research or lookup subagent, read `facts/` for the topic. A fact file still holds when `git diff --quiet <its commit> HEAD -- <its files>` passes; otherwise research only what changed. Save what a subagent found to `facts/<topic>.md`, rewriting the whole file: the commit, the files covered, then the facts with file:line.
+11. A standing instruction the user gives for every session goes into the config's `notes` (show the user the change first), then send the notes template, instead of relaying the instruction itself.
+12. The multiverse state lives in the files above, not in the conversation. After a compaction, run `S whoami` and `S timeline` before acting on anything from before it.
 
 ## Message templates
 
@@ -50,6 +55,7 @@ Helper `S` = `python3 ${CLAUDE_SKILL_DIR}/scripts/multiverse.py` (`--help` lists
 - combining: `<me>: combining <branches> into <integration> now; hold your own combines until I report.` To the other main timelines.
 - combined: `<me>: <integration> is now <sha> (merged <branches>; verify <run: result | reused from <who> on <sha>: result>). Not pushed. Branch new work from <sha>.` To every live registered session.
 - left: `<me> left <timeline>; merged <branches|none>, still open <branches|none>.` A worker to its main timeline.
+- notes: `<me>: config notes updated: <one-line gist>. Re-read them.` To every live registered session.
 - The report to the user after a combine has its own fixed shape: see story-combine.
 
 ## Small fixes
@@ -69,3 +75,4 @@ Write the `config.json` that `S where` names, together with the user. Start from
 | `session_setup` | commands a session runs once for itself, such as creating its own test device; `{sid}` = the session id `S whoami` prints |
 | `shared_files` | `{glob: conflict rule}` for files every story may append to |
 | `notes` | short repo-specific rules every session follows |
+| `subagents` | `{"research" \| "lookup" \| "review": {"model", "effort"}}` passed on Agent calls (rule 9); without the key, research and lookup run at low effort |

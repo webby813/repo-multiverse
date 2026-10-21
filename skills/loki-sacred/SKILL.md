@@ -30,5 +30,6 @@ Makes this session a main timeline right away. There are no checks and no questi
 - Workers hand in with the ready template. Review each hand-in before it is combined; send it back with the returned template when it strays from its task.
 - Combine only through /story-combine, and only what the user asked for in this conversation. The rhythm is the user's: each hand-in as it arrives, or several at once. /story-combine takes one branch or many.
 - A main timeline can also do work itself on its own branches (/loki-join branch …).
+- Answer the user's questions about the code from `facts/` or a research subagent (shared rules 9 and 10), so this long-lived session doesn't fill up with code it read.
 
 Template wording and the shared rules: `${CLAUDE_SKILL_DIR}/../repo-multiverse/SKILL.md`.

@@ -81,6 +81,7 @@ session 以名字互相稱呼，標準名字是 `loki-agent-N`。用附帶的 `l
 - **先驗證再前進，只驗一次**：合併和驗證都在暫存 worktree 進行，主資料夾只做 fast-forward，別人沒提交的檔案不會被動到；沒有改動就沿用已通過的結果。
 - **歷史保持好讀**：分支保留自己的 commit，不 squash；已經 push 的 commit 不改寫。
 - **不靠截圖自檢**：檢查靠 build 和你設定的驗證指令；只有你要求時才截圖或錄影。
+- **查資料更省**：subagent 依任務類型套用設定裡的模型和 effort（預設 research 和 lookup 用低 effort），一個 session 查到的結果存在 `facts/`，其他 session 不必再讀一次同樣的程式碼。
 - **不寫進你的專案**：設定和狀態都存在 `~/.claude/multiverse/<repo-key>/`，不會在 repo、`.git` 或 `.claude` 裡留下任何檔案。
 
 ## 什麼時候適合用
@@ -196,9 +197,14 @@ Claude 會和你一起寫好這個 repo 的設定（整合分支、驗證指令�
 | `worktree_setup` | 新 worktree 建好後要跑的指令，例如準備相依套件 |
 | `session_setup` | 每個 session 第一次用到前替自己跑一次的指令，例如建一台自己的測試裝置；`{sid}` 是 session 的短 id。`/loki-leave` 會移除它建的東西 |
 | `shared_files` | 每個 story 都可能改到的共用檔案，以及衝突時的處理規則 |
-| `notes` | 每個 session 都要遵守的專案規則，例如哪台裝置是你自己的 |
+| `notes` | 每個 session 都要遵守的專案規則，例如哪台裝置是你自己的。你給所有 session 的長期指示會寫在這裡，再通知其他 session 重讀 |
+| `subagents` | 各類 subagent 的模型和 effort：`research`（程式碼怎麼運作、某條路徑走不走得到）、`lookup`（只列出某個東西在哪裡定義或使用）、`review`（審查、計畫）。沒設定時，research 和 lookup 用低 effort，review 沿用 session 本身的設定 |
 
-狀態存在 `~/.claude/multiverse/<repo-key>/`。在 repo 裡執行 `python3 ~/.claude/skills/repo-multiverse/scripts/multiverse.py where` 會印出確切位置。想換位置的話，設定環境變數 `MULTIVERSE_HOME`。
+關於 `subagents`：用兩個實際的查資料任務測試，低 effort 的結論跟預設 effort 一樣，cache 輸入 token 少了 86–94%；`haiku` 則判斷錯了程式路徑是否真的走得到。所以範例只在 `lookup` 用 `haiku`。環境變數 `CLAUDE_CODE_EFFORT_LEVEL` 和 `CLAUDE_CODE_SUBAGENT_MODEL_FORCE=1` 會蓋過這些設定。
+
+長時間運作的 session（尤其是主時間線）每一回合都會重讀整個 context，context 越大，每一步越貴。Claude 看不到自己的 context 大小，也不能自己壓縮，所以請自行在 Claude Code 把自動壓縮的門檻調低（`/autocompact 300k`，或在 settings 設定 `autoCompactWindow`）。multiverse 的狀態都存在檔案裡，壓縮後 session 會重新讀取。
+
+狀態存在 `~/.claude/multiverse/<repo-key>/`，查資料的結果也放在同一處的 `facts/`，附上查證時的 commit。在 repo 裡執行 `python3 ~/.claude/skills/repo-multiverse/scripts/multiverse.py where` 會印出確切位置。想換位置的話，設定環境變數 `MULTIVERSE_HOME`。
 
 0.2 版的狀態（把關者和 `sacred.json`）會被當成主時間線讀取；每個 session 下次寫自己的登記時，會自動換成新格式。
 

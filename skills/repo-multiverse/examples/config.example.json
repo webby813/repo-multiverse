@@ -16,5 +16,10 @@
   },
   "notes": [
     "Short repo-specific rules every session follows, e.g. which device belongs to the user and must not be used."
-  ]
+  ],
+  "subagents": {
+    "research": { "effort": "low" },
+    "lookup": { "model": "haiku", "effort": "low" },
+    "review": {}
+  }
 }

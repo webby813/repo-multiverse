@@ -81,6 +81,7 @@ Sessions are addressed by name, and the standard name is `loki-agent-N`. Start C
 - **Verify before moving, once**: merging and verification happen in a scratch worktree, and the main folder only fast-forwards, so other people's uncommitted files are never touched. A passing result is reused when nothing changed.
 - **History stays readable**: branches keep their own commits, never squashed, and pushed commits are never rewritten.
 - **No screenshots for self-checks**: checks are builds and your verify commands. Screenshots or recordings happen only when you ask.
+- **Research costs less**: subagents run at the model and effort your config sets for their tier (research and lookup at low effort by default), and what one session finds is saved in `facts/` so other sessions don't read the same code again.
 - **Nothing written into your project**: config and state live in `~/.claude/multiverse/<repo-key>/`. Nothing is left in the repo, its `.git` or its `.claude`.
 
 ## When to use it
@@ -196,9 +197,14 @@ Claude writes this repo's config with you (integration branch, verification comm
 | `worktree_setup` | Commands to run after a new worktree is created, such as preparing dependencies |
 | `session_setup` | Commands each session runs once for itself before it needs them, such as creating its own test device; `{sid}` is the session's short id. `/loki-leave` removes what they made |
 | `shared_files` | Files every story may touch, with the rule for resolving conflicts in them |
-| `notes` | Repo-specific rules every session follows, such as a device that belongs to you |
+| `notes` | Repo-specific rules every session follows, such as a device that belongs to you. A standing instruction you give for every session is written here, and the other sessions are told to re-read it |
+| `subagents` | Model and effort per subagent tier: `research` (how code behaves, whether a path is reachable), `lookup` (only lists where something is defined or used), `review` (reviews, plans). Without it, research and lookup run at low effort and review keeps the session's settings |
 
-State lives in `~/.claude/multiverse/<repo-key>/`. Run `python3 ~/.claude/skills/repo-multiverse/scripts/multiverse.py where` inside the repo to print the exact location. To move it, set the `MULTIVERSE_HOME` environment variable.
+On `subagents`: in a test on two real research tasks, low effort kept the same findings as the default with 86–94% fewer cached-input tokens, while `haiku` got wrong whether code paths are actually reachable. The example therefore uses `haiku` only for `lookup`. The environment variables `CLAUDE_CODE_EFFORT_LEVEL` and `CLAUDE_CODE_SUBAGENT_MODEL_FORCE=1` override these settings.
+
+Long-lived sessions, main timelines above all, re-read their whole context on every turn, so a large context makes every step cost more. Claude can't see its own context size or compact itself, so set a lower auto-compact window in Claude Code yourself (`/autocompact 300k`, or `autoCompactWindow` in settings). The multiverse state lives in files, and sessions re-read it after a compaction.
+
+State lives in `~/.claude/multiverse/<repo-key>/`, together with `facts/`, where research results are kept with the commit they were checked on. Run `python3 ~/.claude/skills/repo-multiverse/scripts/multiverse.py where` inside the repo to print the exact location. To move it, set the `MULTIVERSE_HOME` environment variable.
 
 State from 0.2 (gatekeepers and `sacred.json`) is read as main timelines, and each session moves to the new format the next time it writes its registration.
 
