@@ -50,7 +50,7 @@ This exact shape, in the user's language (the user's standard wording is Chinese
 - <history>：<only if something unusual happened, e.g. a rebase dropped a duplicate commit, a conflict solved by a shared_files rule>
 - 我這邊查過：<what you checked>。自測 <result>（<who ran it, on which commit>）。<what you did not run, said plainly>
 - 主資料夾：<uncommitted files of the user or other sessions> 還是原樣。
-- 其他 session：<who was told before and after; anyone with pending work, or 都沒有>
+- 其他 session：<who was told before and after; a worker's question still waiting on the user; anyone with pending work, or 都沒有>
 - 還沒 push 的：<only when other merges besides this one are also unpushed: list them>
 
 要 push 的話跟我說。

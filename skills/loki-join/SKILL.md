@@ -30,6 +30,7 @@ argument-hint: "[<main timeline name>] | branch <name> [ready]"
 - Commit in small focused commits.
 - Before handing in: rebase onto the integration branch tip (only if the branch was never pushed), run the verify once on the final commit, and put the result and its sha in the ready message so the combine can reuse it.
 - Then wait for your main timeline's reply. A worker never merges into the integration branch.
-- When the combined message says your branch is in and nothing else is left to do, tell the user that /loki-leave wraps this session up.
+- The user watches the main timeline, not this window. When you can't go on without the user's answer, ask here and also send the question template to your main timeline.
+- When the combined message says your branch is in, start the next part of your task (such as the plan's next phase) on a new branch from that sha; don't ask whether to. Only when nothing in your task is left, tell the user that /loki-leave wraps this session up, and name every question of yours the user hasn't answered yet.
 
 No config.json yet: point the user to /repo-multiverse init. Template wording and the shared rules: `${CLAUDE_SKILL_DIR}/../repo-multiverse/SKILL.md`.

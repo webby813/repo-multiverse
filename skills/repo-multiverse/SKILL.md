@@ -15,8 +15,8 @@ The set manages sessions. Use it only when the user asks, or while coordinating 
 | Role | Does | Never |
 |---|---|---|
 | User | starts sessions, says what gets combined and when to push | — |
-| Main timeline (/loki-sacred) | reviews every hand-in from its workers, plans a conflict-free order, combines with /story-combine, tells the other sessions | combines what the user didn't ask for, pushes without the user |
-| Worker (/loki-join) | one task on its own branch and worktree, hands it in to its main timeline, leaves with /loki-leave once its work is in | merges into the integration branch, touches another session's files |
+| Main timeline (/loki-sacred) | reviews every hand-in from its workers, puts their questions to the user, plans a conflict-free order, combines with /story-combine, tells the other sessions | combines what the user didn't ask for, pushes without the user |
+| Worker (/loki-join) | one task on its own branch and worktree, hands each part in to its main timeline and goes on to the next, leaves with /loki-leave once nothing is left | merges into the integration branch, touches another session's files |
 
 ## Names
 
@@ -55,6 +55,8 @@ Helper `S` = `python3 ${CLAUDE_SKILL_DIR}/scripts/multiverse.py` (`--help` lists
 - combining: `<me>: combining <branches> into <integration> now; hold your own combines until I report.` To the other main timelines.
 - combined: `<me>: <integration> is now <sha> (merged <branches>; verify <run: result | reused from <who> on <sha>: result>). Not pushed. Branch new work from <sha>.` To every live registered session.
 - left: `<me> left <timeline>; merged <branches|none>, still open <branches|none>.` A worker to its main timeline.
+- question: `<me> needs the user's answer: <question>` A worker to its main timeline.
+- answer: `<me>: the user answers <worker>'s question: <the user's words>` A main timeline to that worker.
 - notes: `<me>: config notes updated: <one-line gist>. Re-read them.` To every live registered session.
 - The report to the user after a combine has its own fixed shape: see story-combine.
 
