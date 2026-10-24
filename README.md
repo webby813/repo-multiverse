@@ -58,8 +58,8 @@ You (say what gets combined and when to push)
 | Role | Does |
 |---|---|
 | You (the user) | Start sessions; say what gets combined and when to push |
-| Main timeline | Looks after the sessions that joined it: reviews every hand-in, sends back work that strays, combines with `/story-combine`, tells the other sessions. Several can exist; they announce their combines to each other |
-| Worker | Does one task on its own branch under a main timeline, hands it in when ready, never merges itself, and leaves with `/loki-leave` once its work is in |
+| Main timeline | Looks after the sessions that joined it: reviews every hand-in, sends back work that strays, puts their questions to you, combines with `/story-combine`, tells the other sessions. Several can exist; they announce their combines to each other |
+| Worker | Does one task on its own branch under a main timeline, hands each part in when ready, never merges itself, goes on to the next part without asking, and leaves with `/loki-leave` once nothing is left |
 
 ### Names
 
@@ -72,7 +72,7 @@ Sessions are addressed by name, and the standard name is `loki-agent-N`. Start C
 3. The main timeline reviews the diff. Work that strays from the task goes back to its owner.
 4. When you ask, the main timeline tells the other main timelines, merges each branch in a scratch worktree, verifies it once (reusing the worker's result when the tree is identical), and only then fast-forwards the integration branch. The rhythm is yours: combine each hand-in as it arrives, or several at once.
 5. It reports the result in a fixed shape and tells the other sessions. Whether to push is up to you.
-6. The worker runs `/loki-leave`: its registration, its merged worktree and its own test environment go, and its part is done.
+6. The worker goes on to the next part of its task from the new tip. When nothing is left, it runs `/loki-leave`: its registration, its merged worktree and its own test environment go, and its part is done.
 
 ### What it guarantees
 
@@ -202,7 +202,7 @@ Claude writes this repo's config with you (integration branch, verification comm
 
 On `subagents`: in a test on two real research tasks, low effort kept the same findings as the default with 86–94% fewer cached-input tokens, while `haiku` got wrong whether code paths are actually reachable. The example therefore uses `haiku` only for `lookup`. The environment variables `CLAUDE_CODE_EFFORT_LEVEL` and `CLAUDE_CODE_SUBAGENT_MODEL_FORCE=1` override these settings.
 
-Long-lived sessions, main timelines above all, re-read their whole context on every turn, so a large context makes every step cost more, but compacting too early throws away working detail too often. Claude can't see its own context size or compact itself, so set the auto-compact window in Claude Code yourself to about 75% of the model's context window: `/autocompact 750k` on a 1M-context model (saved for that model), or `"autoCompactWindow": 750000` in `~/.claude/settings.json` for every model. `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE` can only make compaction earlier, so it doesn't help here. The multiverse state lives in files, and sessions re-read it after a compaction.
+Long-lived sessions, main timelines above all, re-read their whole context on every turn, so a large context makes every step cost more, but compacting too early throws away working detail too often. Claude can't see its own context size or compact itself, so set the auto-compact window in Claude Code yourself to about 75% of the model's context window: type `/autocompact 750k` in each open session on a 1M-context model. It applies right away and is saved for that model. Editing `~/.claude/settings.json` instead reaches only sessions started after the edit, and a window saved for a model (by `/autocompact`, or by accepting Claude Code's offer to compact earlier) overrides a top-level `"autoCompactWindow"`. `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE` can only make compaction earlier, so it doesn't help here. The multiverse state lives in files, and sessions re-read it after a compaction.
 
 State lives in `~/.claude/multiverse/<repo-key>/`, together with `facts/`, where research results are kept with the commit they were checked on. Run `python3 ~/.claude/skills/repo-multiverse/scripts/multiverse.py where` inside the repo to print the exact location. To move it, set the `MULTIVERSE_HOME` environment variable.
 

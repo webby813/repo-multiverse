@@ -58,8 +58,8 @@ repo-multiverse 借用這套世界觀，讓 Claude Code 能管理同一個 repo 
 | 角色 | 做什麼 |
 |---|---|
 | 你（使用者） | 開 session；決定合什麼、什麼時候 push |
-| 主時間線 | 照看加入它的 session：審查每一份交件、退回偏離任務的改動、用 `/story-combine` 合併、通知其他 session。可以有好幾條，合併前會互相告知 |
-| worker | 在某條主時間線底下，用自己的分支做一件事，做完交件，自己從不合併；成果合進去後用 `/loki-leave` 離開 |
+| 主時間線 | 照看加入它的 session：審查每一份交件、退回偏離任務的改動、把它們要問你的問題轉給你、用 `/story-combine` 合併、通知其他 session。可以有好幾條，合併前會互相告知 |
+| worker | 在某條主時間線底下，用自己的分支做一件事，每做完一段就交件，自己從不合併；一段合進去後直接接著做下一段，不用問；全部做完才用 `/loki-leave` 離開 |
 
 ### 名字
 
@@ -72,7 +72,7 @@ session 以名字互相稱呼，標準名字是 `loki-agent-N`。用附帶的 `l
 3. 主時間線審查 diff，偏離任務的改動退回給擁有者。
 4. 你說要合的時候，主時間線先告知其他主時間線，再把每條分支在暫存 worktree 裡合併、驗證一次（tree 完全相同時直接沿用 worker 的結果），通過之後整合分支才 fast-forward 過去。節奏由你決定：每交一份就合（邊做邊合），或累積幾條一次合。
 5. 用固定格式回報結果並通知其他 session。要不要 push，由你決定。
-6. worker 執行 `/loki-leave`：移除它的登記、已合併的 worktree 和自己的測試環境，工作完成。
+6. worker 從新的 tip 接著做任務的下一段。全部做完了，才執行 `/loki-leave`：移除它的登記、已合併的 worktree 和自己的測試環境，工作完成。
 
 ### 它保證什麼
 
@@ -202,7 +202,7 @@ Claude 會和你一起寫好這個 repo 的設定（整合分支、驗證指令�
 
 關於 `subagents`：用兩個實際的查資料任務測試，低 effort 的結論跟預設 effort 一樣，cache 輸入 token 少了 86–94%；`haiku` 則判斷錯了程式路徑是否真的走得到。所以範例只在 `lookup` 用 `haiku`。環境變數 `CLAUDE_CODE_EFFORT_LEVEL` 和 `CLAUDE_CODE_SUBAGENT_MODEL_FORCE=1` 會蓋過這些設定。
 
-長時間運作的 session（尤其是主時間線）每一回合都會重讀整個 context，context 越大，每一步越貴；但太早壓縮，又會太頻繁丟掉工作中的細節。Claude 看不到自己的 context 大小，也不能自己壓縮，所以請自行在 Claude Code 把自動壓縮的門檻設在模型 context 的 75% 左右：1M context 的模型用 `/autocompact 750k`（會存成該模型的設定），或在 `~/.claude/settings.json` 設定 `"autoCompactWindow": 750000` 套用到所有模型。`CLAUDE_AUTOCOMPACT_PCT_OVERRIDE` 只能讓壓縮提早，所以這裡用不上。multiverse 的狀態都存在檔案裡，壓縮後 session 會重新讀取。
+長時間運作的 session（尤其是主時間線）每一回合都會重讀整個 context，context 越大，每一步越貴；但太早壓縮，又會太頻繁丟掉工作中的細節。Claude 看不到自己的 context 大小，也不能自己壓縮，所以請自行在 Claude Code 把自動壓縮的門檻設在模型 context 的 75% 左右：1M context 的模型，在每個開著的 session 輸入 `/autocompact 750k`，馬上生效，也會存成該模型的設定。改 `~/.claude/settings.json` 的話，只有之後新開的 session 會讀到；而且替某個模型存過的門檻（用 `/autocompact` 存的，或接受 Claude Code 提議「提早壓縮」時存的）會蓋過最上層的 `"autoCompactWindow"`。`CLAUDE_AUTOCOMPACT_PCT_OVERRIDE` 只能讓壓縮提早，所以這裡用不上。multiverse 的狀態都存在檔案裡，壓縮後 session 會重新讀取。
 
 狀態存在 `~/.claude/multiverse/<repo-key>/`，查資料的結果也放在同一處的 `facts/`，附上查證時的 commit。在 repo 裡執行 `python3 ~/.claude/skills/repo-multiverse/scripts/multiverse.py where` 會印出確切位置。想換位置的話，設定環境變數 `MULTIVERSE_HOME`。
 
